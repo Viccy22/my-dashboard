@@ -1,8 +1,24 @@
+// Candle data: [centerX, bodyBottomY, bodyHeight]
+const CANDLES: [number, number, number][] = [
+  [82,   170, 30],
+  [210,  155, 26],
+  [352,  165, 30],
+  [478,  152, 28],
+  [606,  163, 32],
+  [734,  157, 27],
+  [866,  168, 31],
+  [1010, 154, 28],
+  [1142, 162, 30],
+  [1278, 150, 26],
+  [1408, 160, 32],
+  [1522, 148, 28],
+];
+
 export default function Banner() {
   return (
     <div
       role="img"
-      aria-label="Illustrated night banner: Hogwarts-style castle on the left, Velaris mountains with city glow on the right"
+      aria-label="Magical starry night sky with floating candles and drifting clouds"
       style={{
         width: "100%",
         height: "190px",
@@ -20,308 +36,215 @@ export default function Banner() {
         style={{ display: "block" }}
       >
         <defs>
-          {/* Sky: rich deep violet — clearly visible, NOT black */}
+          {/* Rich deep-violet sky */}
           <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor="#12084e" />
-            <stop offset="30%"  stopColor="#261478" />
-            <stop offset="65%"  stopColor="#1c0f60" />
-            <stop offset="100%" stopColor="#100840" />
+            <stop offset="0%"   stopColor="#0e0640" />
+            <stop offset="28%"  stopColor="#200e6e" />
+            <stop offset="60%"  stopColor="#180b58" />
+            <stop offset="100%" stopColor="#0c0630" />
           </linearGradient>
 
-          {/* Moon face */}
+          {/* Moon */}
           <radialGradient id="moonFace" cx="40%" cy="35%" r="62%">
             <stop offset="0%"   stopColor="#fdf6e0" />
-            <stop offset="80%"  stopColor="#e0d090" />
+            <stop offset="80%"  stopColor="#e8d890" />
             <stop offset="100%" stopColor="#c8b870" />
           </radialGradient>
-
-          {/* Moon wide halo */}
           <radialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#d4b84a" stopOpacity="0.20" />
-            <stop offset="100%" stopColor="#d4b84a" stopOpacity="0" />
+            <stop offset="0%"   stopColor="#d4b840" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#d4b840" stopOpacity="0" />
           </radialGradient>
 
-          {/* Castle window glow */}
-          <radialGradient id="win" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#ffb820" stopOpacity="1.0" />
-            <stop offset="100%" stopColor="#ff8800" stopOpacity="0" />
+          {/* Candle flame: bright at base, fades to tip */}
+          <radialGradient id="flame" cx="50%" cy="82%" r="68%">
+            <stop offset="0%"   stopColor="#fff8d0" />
+            <stop offset="35%"  stopColor="#ffd030" />
+            <stop offset="75%"  stopColor="#ff7010" stopOpacity="0.65" />
+            <stop offset="100%" stopColor="#ff4010" stopOpacity="0" />
           </radialGradient>
 
-          {/* Velaris city-of-starlight glow */}
-          <radialGradient id="cityGlow" cx="50%" cy="0%" r="80%">
-            <stop offset="0%"   stopColor="#e8980c" stopOpacity="0.55" />
-            <stop offset="60%"  stopColor="#c06010" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#c06010" stopOpacity="0" />
+          {/* Candle warm light pool */}
+          <radialGradient id="cglow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#ffaa18" stopOpacity="0.48" />
+            <stop offset="100%" stopColor="#ffaa18" stopOpacity="0" />
           </radialGradient>
 
-          {/* Castle base torch warmth */}
-          <radialGradient id="torchGlow" cx="50%" cy="0%" r="80%">
-            <stop offset="0%"   stopColor="#c05010" stopOpacity="0.30" />
-            <stop offset="100%" stopColor="#c05010" stopOpacity="0" />
-          </radialGradient>
+          {/* Flame bloom filter */}
+          <filter id="fg" x="-120%" y="-120%" width="340%" height="340%">
+            <feGaussianBlur stdDeviation="2.5" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
 
-          {/* Star soft-glow filter */}
+          {/* Cloud blur — soft */}
+          <filter id="cf" x="-50%" y="-120%" width="200%" height="340%">
+            <feGaussianBlur stdDeviation="10" />
+          </filter>
+          {/* Cloud blur — wide */}
+          <filter id="cfw" x="-60%" y="-150%" width="220%" height="400%">
+            <feGaussianBlur stdDeviation="16" />
+          </filter>
+
+          {/* Star glow */}
           <filter id="sg" x="-150%" y="-150%" width="400%" height="400%">
-            <feGaussianBlur stdDeviation="0.6" result="b"/>
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            <feGaussianBlur stdDeviation="0.55" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          {/* Bigger sparkle */}
+          {/* Sparkle — large bright stars */}
           <filter id="sp" x="-200%" y="-200%" width="500%" height="500%">
-            <feGaussianBlur stdDeviation="1.2" result="b"/>
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            <feGaussianBlur stdDeviation="1.3" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
 
-          {/* Gold bottom line */}
+          {/* Gold bottom rule */}
           <linearGradient id="gr" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="#c49228" stopOpacity="0"/>
-            <stop offset="16%"  stopColor="#c49228" stopOpacity="0.80"/>
-            <stop offset="84%"  stopColor="#c49228" stopOpacity="0.80"/>
-            <stop offset="100%" stopColor="#c49228" stopOpacity="0"/>
+            <stop offset="0%"   stopColor="#c49228" stopOpacity="0" />
+            <stop offset="16%"  stopColor="#c49228" stopOpacity="0.82" />
+            <stop offset="84%"  stopColor="#c49228" stopOpacity="0.82" />
+            <stop offset="100%" stopColor="#c49228" stopOpacity="0" />
           </linearGradient>
         </defs>
 
-        {/* ── RICH VIOLET SKY ── */}
+        {/* Sky */}
         <rect width="1600" height="190" fill="url(#sky)" />
 
-        {/* Subtle mid-sky lighter band for depth */}
-        <rect x="0" y="55" width="1600" height="30" fill="rgba(80,50,160,0.10)" />
+        {/* ════════════════════════════
+            STARS — abundant and bright
+            ════════════════════════════ */}
 
-        {/* ════════════════════════════════
-            STARS — large quantity, all sizes
-            ════════════════════════════════ */}
-
-        {/* Hero sparkle stars (largest) */}
-        <circle cx="672"  cy="12" r="2.2" fill="#ffffff" opacity="0.96" filter="url(#sp)"/>
-        <circle cx="848"  cy="8"  r="2.4" fill="#ffffff" opacity="0.94" filter="url(#sp)"/>
-        <circle cx="1028" cy="16" r="2.0" fill="#ffffff" opacity="0.92" filter="url(#sp)"/>
-        <circle cx="480"  cy="20" r="1.8" fill="#ffffff" opacity="0.88" filter="url(#sp)"/>
-        <circle cx="1200" cy="10" r="1.8" fill="#ffffff" opacity="0.88" filter="url(#sp)"/>
-        <circle cx="1440" cy="18" r="2.0" fill="#ffffff" opacity="0.90" filter="url(#sp)"/>
+        {/* Hero sparkle stars */}
+        <circle cx="138"  cy="14" r="2.2" fill="#fff" opacity="0.96" filter="url(#sp)" />
+        <circle cx="402"  cy="9"  r="2.0" fill="#fff" opacity="0.92" filter="url(#sp)" />
+        <circle cx="660"  cy="18" r="2.3" fill="#fff" opacity="0.95" filter="url(#sp)" />
+        <circle cx="940"  cy="10" r="2.1" fill="#fff" opacity="0.93" filter="url(#sp)" />
+        <circle cx="1210" cy="16" r="2.2" fill="#fff" opacity="0.94" filter="url(#sp)" />
+        <circle cx="1480" cy="8"  r="2.0" fill="#fff" opacity="0.92" filter="url(#sp)" />
 
         {/* Bright medium stars */}
-        <circle cx="524"  cy="11" r="1.3" fill="#e8dfc0" opacity="0.90" filter="url(#sg)"/>
-        <circle cx="568"  cy="28" r="1.1" fill="#e8dfc0" opacity="0.86" filter="url(#sg)"/>
-        <circle cx="612"  cy="16" r="1.2" fill="#e8dfc0" opacity="0.88" filter="url(#sg)"/>
-        <circle cx="650"  cy="36" r="1.0" fill="#e8dfc0" opacity="0.82" filter="url(#sg)"/>
-        <circle cx="706"  cy="22" r="1.2" fill="#e8dfc0" opacity="0.86" filter="url(#sg)"/>
-        <circle cx="750"  cy="10" r="1.1" fill="#e8dfc0" opacity="0.88" filter="url(#sg)"/>
-        <circle cx="792"  cy="30" r="1.0" fill="#e8dfc0" opacity="0.82" filter="url(#sg)"/>
-        <circle cx="832"  cy="18" r="1.2" fill="#e8dfc0" opacity="0.86" filter="url(#sg)"/>
-        <circle cx="878"  cy="34" r="1.0" fill="#e8dfc0" opacity="0.80" filter="url(#sg)"/>
-        <circle cx="920"  cy="14" r="1.1" fill="#e8dfc0" opacity="0.85" filter="url(#sg)"/>
-        <circle cx="966"  cy="26" r="1.0" fill="#e8dfc0" opacity="0.82" filter="url(#sg)"/>
-        <circle cx="1010" cy="38" r="1.1" fill="#e8dfc0" opacity="0.80" filter="url(#sg)"/>
-        <circle cx="1058" cy="14" r="1.0" fill="#e8dfc0" opacity="0.84" filter="url(#sg)"/>
-        <circle cx="1100" cy="28" r="1.1" fill="#e8dfc0" opacity="0.82" filter="url(#sg)"/>
-        <circle cx="1148" cy="12" r="1.0" fill="#e8dfc0" opacity="0.85" filter="url(#sg)"/>
-        <circle cx="1186" cy="32" r="1.1" fill="#e8dfc0" opacity="0.80" filter="url(#sg)"/>
-        <circle cx="1234" cy="20" r="1.0" fill="#e8dfc0" opacity="0.82" filter="url(#sg)"/>
-        <circle cx="1282" cy="36" r="1.1" fill="#e8dfc0" opacity="0.78" filter="url(#sg)"/>
-        <circle cx="1322" cy="14" r="1.0" fill="#e8dfc0" opacity="0.82" filter="url(#sg)"/>
-        <circle cx="1368" cy="28" r="1.1" fill="#e8dfc0" opacity="0.80" filter="url(#sg)"/>
-        <circle cx="1408" cy="12" r="1.0" fill="#e8dfc0" opacity="0.84" filter="url(#sg)"/>
-        <circle cx="1458" cy="30" r="1.1" fill="#e8dfc0" opacity="0.78" filter="url(#sg)"/>
-        <circle cx="1502" cy="16" r="1.0" fill="#e8dfc0" opacity="0.82" filter="url(#sg)"/>
-        <circle cx="1552" cy="26" r="1.1" fill="#e8dfc0" opacity="0.78" filter="url(#sg)"/>
-        <circle cx="1592" cy="10" r="1.0" fill="#e8dfc0" opacity="0.80" filter="url(#sg)"/>
-        {/* Above castle */}
-        <circle cx="110"  cy="16" r="1.1" fill="#e8dfc0" opacity="0.70" filter="url(#sg)"/>
-        <circle cx="168"  cy="8"  r="1.0" fill="#e8dfc0" opacity="0.66" filter="url(#sg)"/>
-        <circle cx="224"  cy="22" r="1.1" fill="#e8dfc0" opacity="0.68" filter="url(#sg)"/>
-        <circle cx="290"  cy="11" r="1.0" fill="#e8dfc0" opacity="0.65" filter="url(#sg)"/>
-        <circle cx="350"  cy="26" r="1.0" fill="#e8dfc0" opacity="0.62" filter="url(#sg)"/>
-        <circle cx="416"  cy="14" r="1.1" fill="#e8dfc0" opacity="0.64" filter="url(#sg)"/>
+        {([
+          [60,22],[175,11],[260,28],[318,13],[462,24],[530,10],[592,30],[648,12],
+          [702,26],[758,10],[812,34],[868,14],[924,28],[980,8],[1038,24],[1092,12],
+          [1148,30],[1198,10],[1252,26],[1306,14],[1358,32],[1412,10],[1462,24],
+          [1524,12],[1578,28],[1594,14],
+        ] as [number,number][]).map(([cx, cy], i) => (
+          <circle key={`ms${i}`} cx={cx} cy={cy} r={1.1} fill="#e8dfc0" opacity={0.82} filter="url(#sg)" />
+        ))}
 
-        {/* Small dim fill stars — everywhere */}
-        <circle cx="505"  cy="46" r="0.6" fill="#e8dfc0" opacity="0.44"/>
-        <circle cx="542"  cy="58" r="0.5" fill="#e8dfc0" opacity="0.36"/>
-        <circle cx="586"  cy="44" r="0.6" fill="#e8dfc0" opacity="0.42"/>
-        <circle cx="626"  cy="60" r="0.5" fill="#e8dfc0" opacity="0.36"/>
-        <circle cx="668"  cy="50" r="0.6" fill="#e8dfc0" opacity="0.40"/>
-        <circle cx="712"  cy="64" r="0.5" fill="#e8dfc0" opacity="0.34"/>
-        <circle cx="756"  cy="50" r="0.6" fill="#e8dfc0" opacity="0.40"/>
-        <circle cx="800"  cy="68" r="0.5" fill="#e8dfc0" opacity="0.34"/>
-        <circle cx="840"  cy="54" r="0.6" fill="#e8dfc0" opacity="0.38"/>
-        <circle cx="886"  cy="46" r="0.5" fill="#e8dfc0" opacity="0.36"/>
-        <circle cx="928"  cy="60" r="0.6" fill="#e8dfc0" opacity="0.40"/>
-        <circle cx="974"  cy="48" r="0.5" fill="#e8dfc0" opacity="0.38"/>
-        <circle cx="1018" cy="62" r="0.6" fill="#e8dfc0" opacity="0.38"/>
-        <circle cx="1062" cy="46" r="0.5" fill="#e8dfc0" opacity="0.36"/>
-        <circle cx="1106" cy="58" r="0.6" fill="#e8dfc0" opacity="0.38"/>
-        <circle cx="1152" cy="44" r="0.5" fill="#e8dfc0" opacity="0.36"/>
-        <circle cx="1196" cy="58" r="0.6" fill="#e8dfc0" opacity="0.38"/>
-        <circle cx="1242" cy="46" r="0.5" fill="#e8dfc0" opacity="0.34"/>
-        <circle cx="1288" cy="58" r="0.6" fill="#e8dfc0" opacity="0.36"/>
-        <circle cx="1332" cy="46" r="0.5" fill="#e8dfc0" opacity="0.34"/>
-        <circle cx="1378" cy="58" r="0.6" fill="#e8dfc0" opacity="0.36"/>
-        <circle cx="1422" cy="48" r="0.5" fill="#e8dfc0" opacity="0.34"/>
-        <circle cx="1468" cy="58" r="0.6" fill="#e8dfc0" opacity="0.34"/>
-        <circle cx="1514" cy="44" r="0.5" fill="#e8dfc0" opacity="0.34"/>
-        <circle cx="1562" cy="56" r="0.6" fill="#e8dfc0" opacity="0.34"/>
-        {/* Above castle dim */}
-        <circle cx="90"   cy="34" r="0.6" fill="#e8dfc0" opacity="0.38"/>
-        <circle cx="142"  cy="46" r="0.5" fill="#e8dfc0" opacity="0.32"/>
-        <circle cx="196"  cy="36" r="0.6" fill="#e8dfc0" opacity="0.36"/>
-        <circle cx="258"  cy="50" r="0.5" fill="#e8dfc0" opacity="0.32"/>
-        <circle cx="320"  cy="38" r="0.6" fill="#e8dfc0" opacity="0.34"/>
-        <circle cx="384"  cy="52" r="0.5" fill="#e8dfc0" opacity="0.32"/>
-        <circle cx="448"  cy="40" r="0.6" fill="#e8dfc0" opacity="0.34"/>
+        {/* Dim fill stars */}
+        {([
+          [42,44],[98,58],[154,48],[208,62],[266,46],[332,60],[390,44],[448,62],
+          [506,48],[564,58],[622,44],[680,62],[738,46],[796,60],[854,44],[912,62],
+          [970,48],[1028,62],[1086,46],[1144,60],[1202,44],[1258,62],[1316,46],
+          [1374,60],[1430,44],[1488,62],[1546,46],[1590,56],
+          [70,72],[136,80],[200,70],[280,78],[355,68],[430,76],[510,72],[588,78],
+          [665,66],[742,76],[818,70],[896,78],[972,66],[1050,76],[1126,70],
+          [1204,78],[1280,66],[1358,76],[1436,70],[1510,78],[1580,68],
+        ] as [number,number][]).map(([cx, cy], i) => (
+          <circle key={`ds${i}`} cx={cx} cy={cy} r={0.5} fill="#e8dfc0" opacity={0.34} />
+        ))}
 
-        {/* ════════════════════════════
+        {/* ══════════════
             CRESCENT MOON
-            ════════════════════════════ */}
-        <circle cx="800" cy="55" r="75"  fill="url(#moonHalo)"/>
-        <circle cx="800" cy="55" r="45"  fill="url(#moonHalo)"/>
-        <circle cx="800" cy="55" r="26"  fill="url(#moonFace)" opacity="0.95"/>
-        {/* Crescent shadow cut */}
-        <circle cx="815" cy="49" r="22"  fill="#1c0f60"/>
+            ══════════════ */}
+        <circle cx="800" cy="52" r="80" fill="url(#moonHalo)" />
+        <circle cx="800" cy="52" r="50" fill="url(#moonHalo)" />
+        <circle cx="800" cy="52" r="28" fill="url(#moonFace)" opacity="0.96" />
+        <circle cx="818" cy="45" r="24" fill="#180b58" />
 
-        {/* ════════════════════════════════════════
-            HOGWARTS/HP CASTLE — LEFT
-            Near-black (#07040d) against rich violet sky
-            = maximum readable contrast
-            ════════════════════════════════════════ */}
+        {/* ════════════════════════════════════
+            CLOUDS — wispy, layered, violet-tint
+            ════════════════════════════════════ */}
 
-        {/* Warm torch glow at castle base */}
-        <ellipse cx="230" cy="190" rx="290" ry="90" fill="url(#torchGlow)"/>
+        {/* Cloud 1 — left */}
+        <g opacity="0.22" filter="url(#cfw)">
+          <ellipse cx="200" cy="128" rx="110" ry="32" fill="#b8aee0" />
+        </g>
+        <g opacity="0.20" filter="url(#cf)">
+          <ellipse cx="185" cy="122" rx="75"  ry="22" fill="#ccc0f0" />
+          <ellipse cx="235" cy="118" rx="55"  ry="16" fill="#d4c8f8" />
+          <ellipse cx="168" cy="130" rx="50"  ry="15" fill="#c4b8e8" />
+        </g>
 
-        {/* Tower 1 — far left, battlemented */}
-        <path fill="#07040d" d="
-          M 0 190
-          L 0 48
-          L 10 48  L 10 36  L 27 36  L 27 48
-          L 38 48  L 38 36  L 55 36  L 55 48
-          L 66 48  L 66 36  L 83 36  L 83 48
-          L 90 48
-          L 90 115
-          L 110 115
-          L 110 190
-          Z
-        "/>
+        {/* Cloud 2 — left-centre */}
+        <g opacity="0.16" filter="url(#cfw)">
+          <ellipse cx="545" cy="115" rx="95" ry="26" fill="#b0a4d8" />
+        </g>
+        <g opacity="0.15" filter="url(#cf)">
+          <ellipse cx="528" cy="110" rx="65" ry="18" fill="#c8bef0" />
+          <ellipse cx="568" cy="106" rx="48" ry="14" fill="#d0c8f8" />
+        </g>
 
-        {/* Tower 2 — tallest, central, with SPIRE */}
-        <path fill="#07040d" d="
-          M 110 190
-          L 110 65
-          L 124 65  L 124 53  L 141 53  L 141 65
-          L 154 65  L 154 53  L 171 53  L 171 65
-          L 184 65  L 184 53  L 201 53  L 201 65
-          L 216 65
-          L 216 115
-          L 234 115
-          L 234 190
-          Z
-        "/>
-        {/* Spire on Tower 2 */}
-        <polygon points="110,65  163,8  216,65" fill="#07040d"/>
-        {/* Subtle light on left spire face */}
-        <polygon points="110,65  163,8  136,36" fill="rgba(200,160,80,0.07)"/>
-        {/* Garnet pennant */}
-        <polygon points="163,8  163,25  182,16" fill="#8a1f34" opacity="0.94"/>
+        {/* Cloud 3 — right-centre */}
+        <g opacity="0.17" filter="url(#cfw)">
+          <ellipse cx="1060" cy="120" rx="100" ry="28" fill="#b0a4d8" />
+        </g>
+        <g opacity="0.16" filter="url(#cf)">
+          <ellipse cx="1042" cy="114" rx="70"  ry="20" fill="#ccc0f0" />
+          <ellipse cx="1085" cy="110" rx="52"  ry="15" fill="#d4c8f8" />
+          <ellipse cx="1022" cy="122" rx="45"  ry="14" fill="#c4b8e8" />
+        </g>
 
-        {/* Tower 3 — medium with small spire */}
-        <path fill="#07040d" d="
-          M 234 115
-          L 234 77
-          L 244 77  L 244 65  L 261 65  L 261 77
-          L 274 77  L 274 65  L 291 65  L 291 77
-          L 300 77
-          L 300 118
-          L 320 118
-          L 320 190
-          Z
-        "/>
-        <polygon points="234,77  267,42  300,77" fill="#07040d"/>
+        {/* Cloud 4 — right */}
+        <g opacity="0.21" filter="url(#cfw)">
+          <ellipse cx="1400" cy="112" rx="115" ry="30" fill="#b8aee0" />
+        </g>
+        <g opacity="0.19" filter="url(#cf)">
+          <ellipse cx="1382" cy="106" rx="80"  ry="22" fill="#ccc0f0" />
+          <ellipse cx="1428" cy="102" rx="60"  ry="17" fill="#d4c8f8" />
+          <ellipse cx="1360" cy="116" rx="55"  ry="16" fill="#c4b8e8" />
+        </g>
 
-        {/* Tower 4 — shorter, battlemented */}
-        <path fill="#07040d" d="
-          M 320 118
-          L 320 90
-          L 330 90  L 330 78  L 346 78  L 346 90
-          L 358 90  L 358 78  L 374 78  L 374 90
-          L 382 90
-          L 382 122
-          L 424 134
-          L 468 146
-          L 504 158
-          L 512 190
-          Z
-        "/>
+        {/* Cloud 5 — thin high wisp across centre */}
+        <g opacity="0.10" filter="url(#cfw)">
+          <ellipse cx="800" cy="88" rx="200" ry="18" fill="#c0b4e0" />
+        </g>
 
-        {/* WINDOWS — bright amber, clearly visible */}
-        <rect x="29" y="64" width="24" height="32" rx="12" fill="#ffb820" opacity="0.88"/>
-        <rect x="29" y="64" width="24" height="32" rx="12" fill="url(#win)"/>
+        {/* ══════════════════════════════════════════
+            FLOATING CANDLES
+            Warm glow → light cone → body → wick → flame
+            ══════════════════════════════════════════ */}
+        {CANDLES.map(([cx, base, h], i) => {
+          const bodyTop  = base - h;
+          const wickTip  = bodyTop - 2;
+          const flameTip = wickTip - 20;
+          const flameMid = wickTip - 10;
 
-        <rect x="122" y="80" width="20" height="28" rx="10" fill="#ffb820" opacity="0.82"/>
-        <rect x="122" y="80" width="20" height="28" rx="10" fill="url(#win)"/>
-        <rect x="166" y="82" width="20" height="26" rx="10" fill="#ffb820" opacity="0.85"/>
-        <rect x="166" y="82" width="20" height="26" rx="10" fill="url(#win)"/>
+          const outerFlame = `M ${cx} ${wickTip} C ${cx-6} ${flameMid} ${cx-5} ${flameTip+3} ${cx} ${flameTip} C ${cx+5} ${flameTip+3} ${cx+6} ${flameMid} ${cx} ${wickTip} Z`;
+          const innerFlame = `M ${cx} ${wickTip-1} C ${cx-2.5} ${flameMid} ${cx-2.5} ${flameTip+5} ${cx} ${flameTip+3} C ${cx+2.5} ${flameTip+5} ${cx+2.5} ${flameMid} ${cx} ${wickTip-1} Z`;
 
-        <rect x="244" y="90" width="18" height="24" rx="9"  fill="#ffb820" opacity="0.75"/>
-        <rect x="244" y="90" width="18" height="24" rx="9"  fill="url(#win)"/>
+          return (
+            <g key={i}>
+              {/* Warm light pool */}
+              <ellipse cx={cx} cy={flameMid - 2} rx={30} ry={30} fill="url(#cglow)" />
 
-        <rect x="332" y="100" width="16" height="20" rx="8" fill="#ffb820" opacity="0.68"/>
+              {/* Light cone falling below */}
+              <path
+                d={`M ${cx-4} ${base} L ${cx-20} 190 L ${cx+20} 190 L ${cx+4} ${base} Z`}
+                fill="rgba(255,165,18,0.06)"
+              />
 
-        {/* Gate arch glow */}
-        <path d="M 90 115 Q 100 98 110 115" fill="rgba(255,180,30,0.20)"/>
+              {/* Candle body */}
+              <rect x={cx-5} y={bodyTop} width={10} height={h} rx={2} fill="#f4ecda" />
 
-        {/* ════════════════════════════════════════
-            VELARIS — MOUNTAINS RIGHT
-            Clear triangular peaks, bright snow,
-            golden city-of-starlight glow at base
-            ════════════════════════════════════════ */}
+              {/* Wax drip */}
+              <ellipse cx={cx-4} cy={bodyTop + h * 0.32} rx={2.5} ry={4} fill="#ece2c6" />
 
-        {/* City of Starlight glow — warm gold, prominent */}
-        <ellipse cx="1360" cy="190" rx="320" ry="95"  fill="url(#cityGlow)"/>
-        <ellipse cx="1360" cy="190" rx="200" ry="60"  fill="rgba(230,148,18,0.28)"/>
-        <ellipse cx="1360" cy="190" rx="110" ry="38"  fill="rgba(245,165,22,0.18)"/>
+              {/* Wick */}
+              <line x1={cx} y1={bodyTop} x2={cx} y2={wickTip} stroke="#3e2006" strokeWidth={1.3} />
 
-        {/* Mountain silhouette — near-black */}
-        <path fill="#07040d" d="
-          M 1148 190
-          L 1248 96
-          L 1292 124
-          L 1340 52
-          L 1378 82
-          L 1422 22
-          L 1464 62
-          L 1514 36
-          L 1558 68
-          L 1600 38
-          L 1600 190
-          Z
-        "/>
+              {/* Outer flame with bloom */}
+              <path d={outerFlame} fill="url(#flame)" opacity={0.90} filter="url(#fg)" />
 
-        {/* Snow caps — bright cream-white, high opacity */}
-        <polygon points="1422,22  1396,62  1448,62"  fill="#f6f0de" opacity="0.92"/>
-        <polygon points="1514,36  1490,66  1538,66"  fill="#f6f0de" opacity="0.84"/>
-        <polygon points="1340,52  1316,82  1364,82"  fill="#f6f0de" opacity="0.78"/>
-        <polygon points="1248,96  1226,122 1270,122" fill="#f6f0de" opacity="0.64"/>
-        <polygon points="1600,38  1578,66  1600,66"  fill="#f6f0de" opacity="0.56"/>
+              {/* Inner bright core */}
+              <path d={innerFlame} fill="#fffde8" opacity={0.88} />
+            </g>
+          );
+        })}
 
-        {/* Velaris city lights — clusters of warm dots */}
-        <circle cx="1268" cy="174" r="2.0" fill="#ffc030" opacity="0.78"/>
-        <circle cx="1290" cy="168" r="1.6" fill="#ffb020" opacity="0.72"/>
-        <circle cx="1314" cy="163" r="1.8" fill="#ffc030" opacity="0.76"/>
-        <circle cx="1336" cy="159" r="1.4" fill="#ffb020" opacity="0.68"/>
-        <circle cx="1358" cy="156" r="1.8" fill="#ffc030" opacity="0.74"/>
-        <circle cx="1380" cy="160" r="1.5" fill="#ffb020" opacity="0.70"/>
-        <circle cx="1402" cy="164" r="1.8" fill="#ffc030" opacity="0.72"/>
-        <circle cx="1422" cy="169" r="1.4" fill="#ffb020" opacity="0.66"/>
-        <circle cx="1442" cy="173" r="1.6" fill="#ffc030" opacity="0.68"/>
-        <circle cx="1280" cy="180" r="1.2" fill="#ffd040" opacity="0.60"/>
-        <circle cx="1302" cy="176" r="1.4" fill="#ffd040" opacity="0.64"/>
-        <circle cx="1324" cy="171" r="1.2" fill="#ffd040" opacity="0.60"/>
-        <circle cx="1346" cy="167" r="1.4" fill="#ffd040" opacity="0.62"/>
-        <circle cx="1368" cy="170" r="1.2" fill="#ffd040" opacity="0.60"/>
-        <circle cx="1390" cy="174" r="1.4" fill="#ffd040" opacity="0.60"/>
-        <circle cx="1412" cy="178" r="1.2" fill="#ffd040" opacity="0.58"/>
-
-        {/* ════════════════
+        {/* ════════════
             CENTRE TEXT
-            ════════════════ */}
+            ════════════ */}
         <text
-          x="800" y="84"
+          x="800" y="82"
           textAnchor="middle"
           fontSize="25"
           letterSpacing="10"
@@ -332,19 +255,19 @@ export default function Banner() {
           MY DASHBOARD
         </text>
         <text
-          x="800" y="110"
+          x="800" y="108"
           textAnchor="middle"
           fontSize="11"
           letterSpacing="5"
           fill="#c49228"
-          opacity="0.75"
+          opacity="0.76"
           style={{ fontFamily: "var(--font-cinzel,'Times New Roman',serif)" }}
         >
           ✦  arcane library  ✦
         </text>
 
-        {/* Gold base line */}
-        <line x1="0" y1="188.5" x2="1600" y2="188.5" stroke="url(#gr)" strokeWidth="0.8"/>
+        {/* Gold base rule */}
+        <line x1="0" y1="188.5" x2="1600" y2="188.5" stroke="url(#gr)" strokeWidth="0.8" />
       </svg>
     </div>
   );
