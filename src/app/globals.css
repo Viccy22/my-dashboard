@@ -3,25 +3,127 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0a0814;
+  --sidebar-bg: #0d0b1c;
+  --card-bg: #12102a;
+  --card-border: #261948;
+  --gold: #c9a44a;
+  --gold-bright: #e4c060;
+  --gold-glow: rgba(201, 164, 74, 0.15);
+  --text: #e2d4b4;
+  --text-muted: #6a5e7a;
+  --active-bg: #1c1340;
+  --hover-bg: #171030;
+  --sidebar-border: #1e1540;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  height: 100%;
+  margin: 0;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-crimson, Georgia, 'Times New Roman', serif);
+  background-image:
+    radial-gradient(ellipse at 15% 25%, rgba(88, 40, 160, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 75%, rgba(50, 25, 100, 0.10) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, rgba(30, 10, 60, 0.06) 0%, transparent 60%);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* Nav links */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  text-decoration: none;
+  font-size: 16px;
+  font-family: var(--font-crimson, Georgia, serif);
+  color: var(--text-muted);
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease;
 }
+.nav-link:hover {
+  background: var(--hover-bg);
+  color: var(--gold);
+}
+.nav-link.active {
+  background: var(--active-bg);
+  color: var(--gold-bright);
+  border-left-color: var(--gold);
+}
+
+/* Inputs */
+.magic-input {
+  background: var(--hover-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-crimson, Georgia, serif);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.15s ease;
+  padding: 10px 14px;
+  color-scheme: dark;
+}
+.magic-input::placeholder { color: var(--text-muted); }
+.magic-input:focus {
+  border-color: rgba(201, 164, 74, 0.45);
+  box-shadow: 0 0 0 2px rgba(201, 164, 74, 0.08);
+}
+
+/* Gold button */
+.btn-gold {
+  padding: 10px 22px;
+  background: linear-gradient(135deg, #2a1a5e, #1a0f3a);
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  color: var(--gold);
+  font-family: var(--font-cinzel, Georgia, serif);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.btn-gold:hover {
+  color: var(--gold-bright);
+  box-shadow: 0 0 14px rgba(201, 164, 74, 0.2);
+  background: linear-gradient(135deg, #341e72, #221244);
+}
+
+/* Cards */
+.magic-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 24px;
+  transition: border-color 0.2s ease;
+}
+.magic-card:hover {
+  border-color: rgba(201, 164, 74, 0.2);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(201, 164, 74, 0.35); }
+
+/* Delete × button */
+.del-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px 6px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+.del-btn:hover { opacity: 0.9; color: #c0604a; }
