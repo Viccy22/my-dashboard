@@ -2,254 +2,293 @@ export default function Banner() {
   return (
     <div
       role="img"
-      aria-label="Decorative banner: castle silhouette at left, moonlit mountains at right, starry night sky"
+      aria-label="Night sky with castle silhouette on the left and snow-capped mountains on the right"
       style={{
         width: "100%",
-        height: "155px",
+        height: "170px",
         flexShrink: 0,
         overflow: "hidden",
-        position: "relative",
         borderBottom: "1px solid rgba(196, 146, 40, 0.22)",
       }}
     >
       <svg
-        viewBox="0 0 1600 155"
+        viewBox="0 0 1600 170"
         width="100%"
-        height="155"
+        height="170"
         preserveAspectRatio="xMidYMid slice"
         xmlns="http://www.w3.org/2000/svg"
         style={{ display: "block" }}
       >
         <defs>
-          {/* Sky */}
-          <linearGradient id="bSky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor="#060310" />
-            <stop offset="45%"  stopColor="#0d071e" />
-            <stop offset="100%" stopColor="#180e2c" />
+          {/* Sky: clearly visible deep violet — silhouettes must be blacker than this */}
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#100c30" />
+            <stop offset="40%"  stopColor="#1e1455" />
+            <stop offset="75%"  stopColor="#160e40" />
+            <stop offset="100%" stopColor="#0c0820" />
           </linearGradient>
 
-          {/* Moon glow layers */}
-          <radialGradient id="bMoonHalo" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#eddfc0" stopOpacity="0.10" />
-            <stop offset="100%" stopColor="#eddfc0" stopOpacity="0" />
+          {/* Moon inner glow */}
+          <radialGradient id="moonBody" cx="40%" cy="38%" r="60%">
+            <stop offset="0%"   stopColor="#f0e8cc" />
+            <stop offset="100%" stopColor="#c8bc88" />
           </radialGradient>
 
-          {/* Candle window glow */}
-          <radialGradient id="bWin" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#f0b030" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="#f0b030" stopOpacity="0" />
+          {/* Moon halo — large soft bloom */}
+          <radialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#b8a870" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#b8a870" stopOpacity="0" />
           </radialGradient>
 
-          {/* Soft star blur */}
-          <filter id="bStarGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="0.5" />
+          {/* Candlelight window glow */}
+          <radialGradient id="winGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#ffb020" stopOpacity="0.80" />
+            <stop offset="100%" stopColor="#ffb020" stopOpacity="0" />
+          </radialGradient>
+
+          {/* Warm torch-glow haze behind castle */}
+          <radialGradient id="castleGlow" cx="50%" cy="100%" r="60%">
+            <stop offset="0%"   stopColor="#602010" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#602010" stopOpacity="0" />
+          </radialGradient>
+
+          {/* Magical horizon glow behind mountains */}
+          <radialGradient id="mtGlow" cx="50%" cy="100%" r="65%">
+            <stop offset="0%"   stopColor="#6020a0" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="#6020a0" stopOpacity="0" />
+          </radialGradient>
+
+          {/* Star soft glow filter */}
+          <filter id="sg" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="0.5" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
 
-          {/* Gold footer line */}
-          <linearGradient id="bGoldLine" x1="0" y1="0" x2="1" y2="0">
+          {/* Gold bottom rule */}
+          <linearGradient id="goldRule" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%"   stopColor="#c49228" stopOpacity="0" />
-            <stop offset="20%"  stopColor="#c49228" stopOpacity="0.75" />
-            <stop offset="80%"  stopColor="#c49228" stopOpacity="0.75" />
+            <stop offset="18%"  stopColor="#c49228" stopOpacity="0.78" />
+            <stop offset="82%"  stopColor="#c49228" stopOpacity="0.78" />
             <stop offset="100%" stopColor="#c49228" stopOpacity="0" />
           </linearGradient>
 
-          {/* Side vignettes to blend banner into dark sidebar/content */}
-          <linearGradient id="bVigL" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="#060310" stopOpacity="0.80" />
-            <stop offset="100%" stopColor="#060310" stopOpacity="0" />
+          {/* Vignette left/right */}
+          <linearGradient id="vL" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stopColor="#100c30" stopOpacity="0.88" />
+            <stop offset="100%" stopColor="#100c30" stopOpacity="0" />
           </linearGradient>
-          <linearGradient id="bVigR" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="#060310" stopOpacity="0" />
-            <stop offset="100%" stopColor="#060310" stopOpacity="0.80" />
+          <linearGradient id="vR" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stopColor="#100c30" stopOpacity="0" />
+            <stop offset="100%" stopColor="#100c30" stopOpacity="0.88" />
           </linearGradient>
         </defs>
 
-        {/* ── Sky background ── */}
-        <rect width="1600" height="155" fill="url(#bSky)" />
+        {/* ── Sky ── */}
+        <rect width="1600" height="170" fill="url(#sky)" />
 
-        {/* ── Atmospheric aubergine glow centre-left (moonlight haze) ── */}
-        <ellipse cx="820" cy="40" rx="260" ry="80"
-          fill="rgba(55,22,90,0.18)" />
+        {/* Atmospheric glow behind castle (warm) */}
+        <ellipse cx="280" cy="170" rx="320" ry="110" fill="url(#castleGlow)" />
 
-        {/* ═══════════════════════════════
-            STARS
-            ═══════════════════════════════ */}
-        {/* Bright */}
-        <circle cx="488"  cy="14" r="1.1" fill="#eddfc0" opacity="0.92" filter="url(#bStarGlow)" />
-        <circle cx="538"  cy="27" r="0.9" fill="#eddfc0" opacity="0.80" />
-        <circle cx="582"  cy="9"  r="1.0" fill="#eddfc0" opacity="0.88" filter="url(#bStarGlow)" />
-        <circle cx="628"  cy="21" r="0.8" fill="#eddfc0" opacity="0.72" />
-        <circle cx="671"  cy="11" r="1.2" fill="#eddfc0" opacity="0.90" filter="url(#bStarGlow)" />
-        <circle cx="718"  cy="34" r="0.7" fill="#eddfc0" opacity="0.68" />
-        <circle cx="756"  cy="18" r="0.9" fill="#eddfc0" opacity="0.78" />
-        <circle cx="793"  cy="7"  r="1.0" fill="#eddfc0" opacity="0.85" filter="url(#bStarGlow)" />
-        <circle cx="876"  cy="13" r="1.1" fill="#eddfc0" opacity="0.90" filter="url(#bStarGlow)" />
-        <circle cx="922"  cy="30" r="0.8" fill="#eddfc0" opacity="0.72" />
-        <circle cx="962"  cy="10" r="0.9" fill="#eddfc0" opacity="0.82" />
-        <circle cx="1008" cy="22" r="0.7" fill="#eddfc0" opacity="0.65" />
-        <circle cx="1050" cy="14" r="1.0" fill="#eddfc0" opacity="0.85" filter="url(#bStarGlow)" />
-        <circle cx="1094" cy="8"  r="0.8" fill="#eddfc0" opacity="0.75" />
-        <circle cx="1138" cy="26" r="0.9" fill="#eddfc0" opacity="0.78" />
-        {/* Dim — mid-sky */}
-        <circle cx="510"  cy="42" r="0.5" fill="#eddfc0" opacity="0.42" />
-        <circle cx="556"  cy="50" r="0.4" fill="#eddfc0" opacity="0.34" />
-        <circle cx="602"  cy="38" r="0.5" fill="#eddfc0" opacity="0.40" />
-        <circle cx="648"  cy="48" r="0.4" fill="#eddfc0" opacity="0.32" />
-        <circle cx="694"  cy="55" r="0.5" fill="#eddfc0" opacity="0.38" />
-        <circle cx="732"  cy="44" r="0.4" fill="#eddfc0" opacity="0.33" />
-        <circle cx="772"  cy="56" r="0.5" fill="#eddfc0" opacity="0.38" />
-        <circle cx="852"  cy="46" r="0.5" fill="#eddfc0" opacity="0.38" />
-        <circle cx="900"  cy="54" r="0.4" fill="#eddfc0" opacity="0.32" />
-        <circle cx="948"  cy="38" r="0.5" fill="#eddfc0" opacity="0.40" />
-        <circle cx="994"  cy="50" r="0.4" fill="#eddfc0" opacity="0.34" />
-        <circle cx="1038" cy="58" r="0.5" fill="#eddfc0" opacity="0.36" />
-        <circle cx="1082" cy="44" r="0.4" fill="#eddfc0" opacity="0.32" />
-        <circle cx="1126" cy="36" r="0.5" fill="#eddfc0" opacity="0.38" />
-        {/* A few stars in/near castle sky */}
-        <circle cx="96"   cy="10" r="0.6" fill="#eddfc0" opacity="0.44" />
-        <circle cx="196"  cy="4"  r="0.7" fill="#eddfc0" opacity="0.52" />
-        <circle cx="328"  cy="7"  r="0.6" fill="#eddfc0" opacity="0.40" />
-        {/* Near mountains */}
-        <circle cx="1310" cy="10" r="0.7" fill="#eddfc0" opacity="0.55" />
-        <circle cx="1378" cy="20" r="0.6" fill="#eddfc0" opacity="0.45" />
-        <circle cx="1455" cy="8"  r="0.8" fill="#eddfc0" opacity="0.60" filter="url(#bStarGlow)" />
+        {/* Atmospheric glow behind mountains (violet-magic) */}
+        <ellipse cx="1380" cy="170" rx="380" ry="120" fill="url(#mtGlow)" />
 
-        {/* ═══════════════════════════════
-            CRESCENT MOON
-            ═══════════════════════════════ */}
-        {/* Soft halo behind moon */}
-        <circle cx="820" cy="42" r="46" fill="url(#bMoonHalo)" />
-        <circle cx="820" cy="42" r="28" fill="url(#bMoonHalo)" />
-        {/* Moon disc */}
-        <circle cx="820" cy="42" r="19" fill="#e8dcba" opacity="0.86" />
-        {/* Cutout to form crescent */}
-        <circle cx="831" cy="37" r="15.5" fill="#070418" />
+        {/* ── Stars ── */}
+        {/* Bright, glow-filtered */}
+        <circle cx="490"  cy="16" r="1.4" fill="#e8dfc0" opacity="0.95" filter="url(#sg)" />
+        <circle cx="582"  cy="10" r="1.2" fill="#e8dfc0" opacity="0.90" filter="url(#sg)" />
+        <circle cx="668"  cy="14" r="1.3" fill="#e8dfc0" opacity="0.92" filter="url(#sg)" />
+        <circle cx="795"  cy="8"  r="1.1" fill="#e8dfc0" opacity="0.88" filter="url(#sg)" />
+        <circle cx="880"  cy="16" r="1.2" fill="#e8dfc0" opacity="0.90" filter="url(#sg)" />
+        <circle cx="965"  cy="12" r="1.0" fill="#e8dfc0" opacity="0.85" filter="url(#sg)" />
+        <circle cx="1052" cy="16" r="1.1" fill="#e8dfc0" opacity="0.88" filter="url(#sg)" />
+        <circle cx="1456" cy="10" r="1.0" fill="#e8dfc0" opacity="0.82" filter="url(#sg)" />
+        {/* Medium */}
+        <circle cx="535"  cy="30" r="0.9" fill="#e8dfc0" opacity="0.78" />
+        <circle cx="625"  cy="24" r="0.8" fill="#e8dfc0" opacity="0.72" />
+        <circle cx="712"  cy="38" r="0.8" fill="#e8dfc0" opacity="0.70" />
+        <circle cx="752"  cy="20" r="0.9" fill="#e8dfc0" opacity="0.76" />
+        <circle cx="838"  cy="28" r="0.8" fill="#e8dfc0" opacity="0.70" />
+        <circle cx="922"  cy="33" r="0.8" fill="#e8dfc0" opacity="0.72" />
+        <circle cx="1008" cy="24" r="0.7" fill="#e8dfc0" opacity="0.65" />
+        <circle cx="1098" cy="9"  r="0.8" fill="#e8dfc0" opacity="0.75" />
+        <circle cx="1142" cy="28" r="0.9" fill="#e8dfc0" opacity="0.76" />
+        <circle cx="1310" cy="12" r="0.8" fill="#e8dfc0" opacity="0.60" />
+        <circle cx="1380" cy="22" r="0.7" fill="#e8dfc0" opacity="0.52" />
+        {/* Dim fill stars */}
+        <circle cx="510"  cy="46" r="0.5" fill="#e8dfc0" opacity="0.40" />
+        <circle cx="556"  cy="54" r="0.4" fill="#e8dfc0" opacity="0.32" />
+        <circle cx="600"  cy="42" r="0.5" fill="#e8dfc0" opacity="0.38" />
+        <circle cx="648"  cy="50" r="0.4" fill="#e8dfc0" opacity="0.30" />
+        <circle cx="696"  cy="60" r="0.5" fill="#e8dfc0" opacity="0.34" />
+        <circle cx="738"  cy="46" r="0.4" fill="#e8dfc0" opacity="0.30" />
+        <circle cx="780"  cy="62" r="0.5" fill="#e8dfc0" opacity="0.34" />
+        <circle cx="858"  cy="50" r="0.5" fill="#e8dfc0" opacity="0.34" />
+        <circle cx="904"  cy="58" r="0.4" fill="#e8dfc0" opacity="0.28" />
+        <circle cx="950"  cy="42" r="0.5" fill="#e8dfc0" opacity="0.36" />
+        <circle cx="996"  cy="54" r="0.4" fill="#e8dfc0" opacity="0.30" />
+        <circle cx="1088" cy="48" r="0.4" fill="#e8dfc0" opacity="0.28" />
+        <circle cx="1132" cy="40" r="0.5" fill="#e8dfc0" opacity="0.34" />
+        {/* Stars above castle */}
+        <circle cx="160"  cy="16" r="0.8" fill="#e8dfc0" opacity="0.52" />
+        <circle cx="265"  cy="10" r="0.7" fill="#e8dfc0" opacity="0.46" />
+        <circle cx="370"  cy="14" r="0.8" fill="#e8dfc0" opacity="0.44" />
+        <circle cx="440"  cy="22" r="0.6" fill="#e8dfc0" opacity="0.38" />
 
-        {/* ═══════════════════════════════
-            CASTLE SILHOUETTE (left)
-            Towers: T1(far left, tall) · T2(central, tallest) · T3(medium) · T4(shorter)
-            Battlements on each, walls connecting, ground slope fading right
-            ═══════════════════════════════ */}
+        {/* ── Crescent moon ── */}
+        <circle cx="820" cy="50" r="70"  fill="url(#moonHalo)" />
+        <circle cx="820" cy="50" r="42"  fill="url(#moonHalo)" />
+        <circle cx="820" cy="50" r="24"  fill="url(#moonBody)" opacity="0.94" />
+        {/* Shadow circle — cutout makes the crescent */}
+        <circle cx="835" cy="44" r="19.5" fill="#160e40" />
+
+        {/* ══════════════════════════════════════════
+            CASTLE SILHOUETTE
+            Key: near-black (#06030e) against visible violet sky
+            T1 = battlemented tower (far left)
+            T2 = CENTRAL TOWER with tall SPIRE — main "castle" read
+            T3 = medium tower with spire (right of centre)
+            T4 = shorter battlemented tower (far right of castle)
+            Walls at y≈108 connect towers; ground fades right
+            ══════════════════════════════════════════ */}
+
+        {/* Castle base walls + T1 + T4 battlements */}
         <path
-          fill="#0e0820"
+          fill="#06030e"
           d="
-            M 0 155
-            L 0 34
-            L 8  34  L 8  24  L 22 24  L 22 34
-            L 30 34  L 30 24  L 44 24  L 44 34
-            L 52 34  L 52 24  L 66 24  L 66 34
-            L 72 34
-            L 72 92
-            L 96 92
-            L 96 16
-            L 106 16  L 106 6   L 120 6   L 120 16
-            L 130 16  L 130 6   L 144 6   L 144 16
-            L 154 16  L 154 6   L 168 6   L 168 16
-            L 178 16  L 178 6   L 192 6   L 192 16
-            L 200 16
-            L 200 90
-            L 224 90
-            L 224 36
-            L 232 36  L 232 26  L 246 26  L 246 36
-            L 254 36  L 254 26  L 268 26  L 268 36
-            L 276 36  L 276 26  L 290 26  L 290 36
-            L 296 36
-            L 296 90
-            L 318 90
-            L 318 56
-            L 326 56  L 326 46  L 340 46  L 340 56
-            L 348 56  L 348 46  L 362 46  L 362 56
-            L 368 56
-            L 368 94
-            L 408 104
-            L 452 116
-            L 488 134
-            L 498 155
+            M 0 170
+            L 0 52
+            L 12 52  L 12 40  L 28 40  L 28 52
+            L 40 52  L 40 40  L 56 40  L 56 52
+            L 68 52  L 68 40  L 84 40  L 84 52
+            L 90 52
+            L 90 108
+            L 112 108
+            L 112 108
+            L 218 108
+            L 218 78
+            L 228 78  L 228 66  L 244 66  L 244 78
+            L 256 78  L 256 66  L 272 66  L 272 78
+            L 284 78  L 284 66  L 300 66  L 300 78
+            L 308 78
+            L 308 108
+            L 326 108
+            L 326 90
+            L 336 90  L 336 78  L 350 78  L 350 90
+            L 362 90  L 362 78  L 376 78  L 376 90
+            L 382 90
+            L 382 112
+            L 425 122
+            L 472 136
+            L 508 148
+            L 516 170
             Z
           "
         />
 
-        {/* Castle windows — amber candlelight */}
-        {/* T1 window */}
-        <rect x="26"  y="54" width="18" height="24" rx="9"  fill="#d08c18" opacity="0.52" />
-        <rect x="26"  y="54" width="18" height="24" rx="9"  fill="url(#bWin)" />
-        {/* T2 left window */}
-        <rect x="110" y="38" width="16" height="22" rx="8"  fill="#d08c18" opacity="0.44" />
-        <rect x="110" y="38" width="16" height="22" rx="8"  fill="url(#bWin)" />
-        {/* T2 right window */}
-        <rect x="148" y="40" width="16" height="20" rx="8"  fill="#d08c18" opacity="0.48" />
-        <rect x="148" y="40" width="16" height="20" rx="8"  fill="url(#bWin)" />
+        {/* T2 body — tallest tower with spire (x=112-218) */}
+        <path
+          fill="#06030e"
+          d="
+            M 112 108
+            L 112 62
+            L 124 62  L 124 50  L 140 50  L 140 62
+            L 154 62  L 154 50  L 170 50  L 170 62
+            L 184 62  L 184 50  L 200 50  L 200 62
+            L 218 62
+            L 218 108
+            Z
+          "
+        />
+
+        {/* T2 SPIRE — the hero element that screams "castle" */}
+        <polygon points="112,62  165,6  218,62" fill="#06030e" />
+
+        {/* T2 spire: faint highlight on left face for depth */}
+        <polygon points="112,62  165,6  138,34" fill="rgba(180,140,80,0.07)" />
+
+        {/* Garnet pennant at spire tip */}
+        <polygon points="165,6  165,24  182,15" fill="#7a1b2c" opacity="0.90" />
+
+        {/* T3 smaller spire (x=218-308) */}
+        <polygon points="218,78  263,34  308,78" fill="#06030e" />
+
+        {/* Castle windows — bright amber */}
+        {/* T1 arched window */}
+        <rect x="33"  y="64"  width="22" height="30" rx="11" fill="#ffb020" opacity="0.72" />
+        <rect x="33"  y="64"  width="22" height="30" rx="11" fill="url(#winGlow)" />
+
+        {/* T2 windows (left + right of centre) */}
+        <rect x="126" y="74"  width="18" height="26" rx="9"  fill="#ffb020" opacity="0.65" />
+        <rect x="126" y="74"  width="18" height="26" rx="9"  fill="url(#winGlow)" />
+        <rect x="168" y="76"  width="18" height="24" rx="9"  fill="#ffb020" opacity="0.68" />
+        <rect x="168" y="76"  width="18" height="24" rx="9"  fill="url(#winGlow)" />
+
         {/* T3 window */}
-        <rect x="238" y="54" width="14" height="20" rx="7"  fill="#d08c18" opacity="0.38" />
-        {/* Gate arch between T1 and T2 */}
-        <path d="M 72 92 Q 84 76 96 92"
-          fill="none" stroke="#d08c18" strokeWidth="0.6" opacity="0.18" />
+        <rect x="245" y="86"  width="16" height="20" rx="8"  fill="#ffb020" opacity="0.58" />
 
-        {/* ═══════════════════════════════
-            MOUNTAIN SILHOUETTE (right)
-            ═══════════════════════════════ */}
+        {/* Gate arch between T1 and T2 */}
+        <path d="M 90 108 Q 101 90 112 108" fill="#ffb020" opacity="0.12" />
+
+        {/* ══════════════════════════════════════════
+            MOUNTAIN SILHOUETTE
+            Clear triangular peaks, bright snow caps
+            ══════════════════════════════════════════ */}
         <path
-          fill="#0c0a1c"
+          fill="#06030e"
           d="
-            M 1600 155
-            L 1600 78
-            L 1568 50
-            L 1536 76
-            L 1502 40
-            L 1466 68
-            L 1424 24
-            L 1386 56
-            L 1352 36
-            L 1316 60
-            L 1282 44
-            L 1250 74
-            L 1224 92
-            L 1200 108
-            L 1184 128
-            L 1172 155
+            M 1165 170
+            L 1248 98
+            L 1288 122
+            L 1338 56
+            L 1376 84
+            L 1422 28
+            L 1464 66
+            L 1512 40
+            L 1556 72
+            L 1600 44
+            L 1600 170
             Z
           "
         />
 
-        {/* Snow/starlight caps on peaks */}
-        <polygon points="1424,24  1408,46  1440,46" fill="#eddfc0" opacity="0.15" />
-        <polygon points="1502,40  1488,58  1516,58" fill="#eddfc0" opacity="0.11" />
-        <polygon points="1352,36  1338,54  1366,54" fill="#eddfc0" opacity="0.10" />
-        <polygon points="1568,50  1554,68  1582,68" fill="#eddfc0" opacity="0.08" />
+        {/* Snow caps — bright white/cream, clearly visible */}
+        <polygon points="1422,28  1396,64  1448,64"  fill="#f2ead4" opacity="0.82" />
+        <polygon points="1512,40  1488,70  1536,70"  fill="#f2ead4" opacity="0.70" />
+        <polygon points="1338,56  1314,84  1362,84"  fill="#f2ead4" opacity="0.65" />
+        <polygon points="1248,98  1228,122 1268,122" fill="#f2ead4" opacity="0.52" />
+        <polygon points="1600,44  1576,72  1600,72"  fill="#f2ead4" opacity="0.42" />
 
-        {/* ═══════════════════════════════
-            CENTRE TEXT
-            ═══════════════════════════════ */}
+        {/* ── Centre text ── */}
         <text
-          x="800" y="78"
+          x="800" y="84"
           textAnchor="middle"
-          fontSize="26"
-          letterSpacing="9"
+          fontSize="25"
+          letterSpacing="10"
           fill="#eddfc0"
-          opacity="0.84"
+          opacity="0.86"
           style={{ fontFamily: "var(--font-cinzel, 'Times New Roman', serif)", fontWeight: 700 }}
         >
           MY DASHBOARD
         </text>
         <text
-          x="800" y="102"
+          x="800" y="106"
           textAnchor="middle"
           fontSize="11"
           letterSpacing="5"
           fill="#c49228"
-          opacity="0.65"
+          opacity="0.68"
           style={{ fontFamily: "var(--font-cinzel, 'Times New Roman', serif)" }}
         >
           ✦  arcane library  ✦
         </text>
 
-        {/* ── Gold separator at bottom of banner ── */}
-        <line x1="0" y1="153.5" x2="1600" y2="153.5"
-          stroke="url(#bGoldLine)" strokeWidth="0.75" />
+        {/* Gold line at base of banner */}
+        <line x1="0" y1="168.5" x2="1600" y2="168.5"
+          stroke="url(#goldRule)" strokeWidth="0.8" />
 
-        {/* ── Side vignettes ── */}
-        <rect x="0"    y="0" width="180" height="155" fill="url(#bVigL)" />
-        <rect x="1420" y="0" width="180" height="155" fill="url(#bVigR)" />
+        {/* Side vignettes */}
+        <rect x="0"    y="0" width="150" height="170" fill="url(#vL)" />
+        <rect x="1450" y="0" width="150" height="170" fill="url(#vR)" />
       </svg>
     </div>
   );
