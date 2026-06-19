@@ -1,40 +1,46 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
-type Todo = { id: string; text: string; done: boolean };
+type Todo         = { id: string; text: string; done: boolean };
 type DashboardData = { todos?: Todo[]; [key: string]: unknown };
+type SaveStatus   = "idle" | "saving" | "saved" | "error";
 
 export default function TodosPage() {
-  const [data, setData] = useState<DashboardData>({});
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "saving" | "saved" | "error">("loading");
+  const [data,    setData]   = useState<DashboardData>({});
+  const [todos,   setTodos]  = useState<Todo[]>([]);
+  const [status,  setStatus] = useState<SaveStatus>("idle");
+  const [loading, setLoading] = useState(true);
   const [newTodo, setNewTodo] = useState("");
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch("/api/data")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((res) => {
         const d: DashboardData = res.data ?? {};
         setData(d);
         setTodos(d.todos ?? []);
-        setStatus("ready");
       })
-      .catch(() => setStatus("error"));
+      .catch(() => setStatus("error"))
+      .finally(() => setLoading(false));
   }, []);
 
   const save = useCallback(async (newData: DashboardData) => {
     setStatus("saving");
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     try {
-      await fetch("/api/data", {
+      const res = await fetch("/api/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: newData }),
       });
+      if (!res.ok) throw new Error();
       setStatus("saved");
-      setTimeout(() => setStatus("ready"), 2000);
     } catch {
       setStatus("error");
+    } finally {
+      toastTimer.current = setTimeout(() => setStatus("idle"), 2200);
     }
   }, []);
 
@@ -61,55 +67,30 @@ export default function TodosPage() {
     save({ ...data, todos: updated });
   };
 
-  const pending = todos.filter((t) => !t.done);
-  const done = todos.filter((t) => t.done);
+  const pending   = todos.filter((t) => !t.done);
+  const completed = todos.filter((t) =>  t.done);
 
-  if (status === "loading") {
-    return (
-      <p style={{ color: "var(--text-muted)", fontFamily: "var(--font-crimson)", fontStyle: "italic" }}>
-        Summoning your tasks…
-      </p>
-    );
+  if (loading) {
+    return <p className="empty-state">Summoning your tasks…</p>;
   }
 
   return (
-    <div style={{ maxWidth: "700px", position: "relative" }}>
+    <div style={{ maxWidth: "700px" }}>
 
-      {/* Save status badge */}
-      {(status === "saving" || status === "saved" || status === "error") && (
-        <div style={{
-          position: "fixed", top: "20px", right: "24px",
-          background: "var(--card-bg)",
-          border: `1px solid ${status === "error" ? "#c06040" : "var(--gold)"}`,
-          color: status === "error" ? "#c06040" : "var(--gold)",
-          padding: "8px 18px", borderRadius: "8px",
-          fontFamily: "var(--font-crimson)", fontSize: "14px",
-          fontStyle: "italic", zIndex: 50,
-        }}>
-          {status === "saving" ? "Saving…" : status === "saved" ? "Saved ✦" : "Error saving"}
+      {status !== "idle" && (
+        <div className={`save-toast${status === "error" ? " error" : ""}`}>
+          {status === "saving" ? "Saving…" : status === "saved" ? "Saved  ✦" : "Could not save — check your connection."}
         </div>
       )}
 
       <div className="magic-card">
 
-        {/* Heading */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "22px" }}>
-          <span style={{ color: "var(--gold)", fontSize: "14px" }}>⚜</span>
-          <h2 style={{
-            fontFamily: "var(--font-cinzel)",
-            fontSize: "14px",
-            letterSpacing: "0.12em",
-            color: "var(--gold)",
-            margin: 0,
-            fontWeight: "700",
-            textTransform: "uppercase",
-          }}>
-            To-Do List
-          </h2>
+        <div className="section-title">
+          <span>⚜</span> To-Do List
         </div>
 
         {/* Add task */}
-        <div style={{ display: "flex", gap: "8px", marginBottom: "22px" }}>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "4px" }}>
           <input
             className="magic-input"
             type="text"
@@ -117,86 +98,63 @@ export default function TodosPage() {
             value={newTodo}
             onChange={(e) => setNewTodo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTodo()}
-            style={{ flex: 1 }}
           />
-          <button className="btn-gold" onClick={addTodo}>Add</button>
+          <button className="btn-seal" onClick={addTodo}>Add</button>
         </div>
 
-        <div style={{
-          height: "1px",
-          background: "linear-gradient(to right, var(--gold), transparent)",
-          opacity: 0.2,
-          marginBottom: "18px",
-        }} />
+        <hr className="gold-rule" />
 
         {todos.length === 0 ? (
-          <p style={{
-            color: "var(--text-muted)", fontFamily: "var(--font-crimson)",
-            fontStyle: "italic", fontSize: "16px", margin: 0,
-          }}>
-            No tasks yet. Your quest log is empty.
-          </p>
+          <p className="empty-state">No tasks yet. Your quest log is empty.</p>
         ) : (
           <>
-            {/* Pending tasks */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              {pending.map((todo) => (
-                <div key={todo.id} style={{
-                  display: "flex", alignItems: "center", gap: "12px",
-                  padding: "11px 14px", borderRadius: "8px",
-                  background: "var(--hover-bg)",
+            {/* Pending */}
+            {pending.map((todo) => (
+              <div key={todo.id} className="item-row" style={{ marginBottom: "5px" }}>
+                <input
+                  type="checkbox"
+                  className="magic-checkbox"
+                  checked={false}
+                  onChange={() => toggleTodo(todo.id)}
+                />
+                <span style={{
+                  flex: 1,
+                  fontFamily: "var(--font-crimson)",
+                  fontSize: "17px",
+                  color: "var(--parchment)",
                 }}>
-                  <input
-                    type="checkbox"
-                    checked={false}
-                    onChange={() => toggleTodo(todo.id)}
-                    style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--gold)", flexShrink: 0 }}
-                  />
-                  <span style={{ flex: 1, fontFamily: "var(--font-crimson)", fontSize: "17px", color: "var(--text)" }}>
-                    {todo.text}
-                  </span>
-                  <button className="del-btn" onClick={() => deleteTodo(todo.id)}>×</button>
-                </div>
-              ))}
-            </div>
-
-            {/* Completed tasks */}
-            {done.length > 0 && (
-              <div style={{ marginTop: "16px", opacity: 0.45 }}>
-                <div style={{
-                  height: "1px", background: "var(--card-border)",
-                  marginBottom: "12px",
-                }} />
-                <div style={{
-                  fontSize: "10px", letterSpacing: "0.2em",
-                  color: "var(--text-muted)", fontFamily: "var(--font-cinzel)",
-                  textTransform: "uppercase", marginBottom: "8px",
-                }}>
-                  Completed
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  {done.map((todo) => (
-                    <div key={todo.id} style={{
-                      display: "flex", alignItems: "center", gap: "12px",
-                      padding: "10px 14px", borderRadius: "8px",
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={true}
-                        onChange={() => toggleTodo(todo.id)}
-                        style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--gold)", flexShrink: 0 }}
-                      />
-                      <span style={{
-                        flex: 1, fontFamily: "var(--font-crimson)", fontSize: "17px",
-                        color: "var(--text)", textDecoration: "line-through",
-                      }}>
-                        {todo.text}
-                      </span>
-                      <button className="del-btn" onClick={() => deleteTodo(todo.id)}>×</button>
-                    </div>
-                  ))}
-                </div>
+                  {todo.text}
+                </span>
+                <button className="del-btn" onClick={() => deleteTodo(todo.id)}>×</button>
               </div>
+            ))}
+
+            {/* Completed */}
+            {completed.length > 0 && (
+              <>
+                <hr className="gold-rule" />
+                <p className="completed-label">Completed</p>
+                {completed.map((todo) => (
+                  <div key={todo.id} className="item-row done" style={{ marginBottom: "5px" }}>
+                    <input
+                      type="checkbox"
+                      className="magic-checkbox"
+                      checked={true}
+                      onChange={() => toggleTodo(todo.id)}
+                    />
+                    <span style={{
+                      flex: 1,
+                      fontFamily: "var(--font-crimson)",
+                      fontSize: "17px",
+                      color: "var(--parchment)",
+                      textDecoration: "line-through",
+                    }}>
+                      {todo.text}
+                    </span>
+                    <button className="del-btn" onClick={() => deleteTodo(todo.id)}>×</button>
+                  </div>
+                ))}
+              </>
             )}
           </>
         )}

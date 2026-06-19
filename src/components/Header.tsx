@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 
 const pageTitles: Record<string, string> = {
-  "/": "Dashboard",
+  "/":      "Dashboard",
   "/todos": "To-Do List",
 };
 
@@ -20,40 +20,43 @@ export default function Header() {
 
   return (
     <header style={{
-      padding: "22px 32px 0",
+      padding: "20px 32px 0",
       flexShrink: 0,
+      background: "transparent",
     }}>
       <div style={{
         display: "flex",
         alignItems: "baseline",
         justifyContent: "space-between",
-        paddingBottom: "18px",
+        paddingBottom: "16px",
       }}>
         <h1 style={{
           fontFamily: "var(--font-cinzel)",
-          fontSize: "20px",
-          letterSpacing: "0.1em",
+          fontSize: "18px",
+          letterSpacing: "0.12em",
           color: "var(--gold)",
           margin: 0,
-          fontWeight: "700",
+          fontWeight: 700,
+          textTransform: "uppercase",
         }}>
           {title}
         </h1>
         <span style={{
           fontFamily: "var(--font-crimson)",
           fontSize: "15px",
-          color: "var(--text-muted)",
+          color: "var(--parchment-dim)",
           fontStyle: "italic",
         }}>
           {today}
         </span>
       </div>
+      {/* Gold rule — fades right */}
       <div style={{
         height: "1px",
-        background: "linear-gradient(to right, var(--gold) 0%, rgba(201,164,74,0.15) 60%, transparent 100%)",
+        background: "linear-gradient(to right, var(--gold) 0%, rgba(196,146,40,0.12) 55%, transparent 100%)",
+        opacity: 0.35,
         marginLeft: "-32px",
         marginRight: "-32px",
-        opacity: 0.45,
       }} />
     </header>
   );

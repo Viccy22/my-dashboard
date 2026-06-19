@@ -2,128 +2,332 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Fantasy Library at Night
+   Palette: midnight aubergine · antique gold · parchment · garnet
+   Any new feature just uses these classes — nothing else needed.
+   ═══════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg: #0a0814;
-  --sidebar-bg: #0d0b1c;
-  --card-bg: #12102a;
-  --card-border: #261948;
-  --gold: #c9a44a;
-  --gold-bright: #e4c060;
-  --gold-glow: rgba(201, 164, 74, 0.15);
-  --text: #e2d4b4;
-  --text-muted: #6a5e7a;
-  --active-bg: #1c1340;
-  --hover-bg: #171030;
-  --sidebar-border: #1e1540;
+  /* Backgrounds (darkest → lightest) */
+  --midnight:          #0b0817;
+  --aubergine:         #150e26;
+  --aubergine-mid:     #1c1436;
+  --aubergine-light:   #241b44;
+  --input-bg:          #110c21;
+
+  /* Antique gold — warm, aged, never neon */
+  --gold:              #c49228;
+  --gold-light:        #daa83a;
+  --gold-dim:          rgba(196, 146, 40, 0.13);
+  --gold-glow:         rgba(196, 146, 40, 0.16);
+
+  /* Deep garnet — secondary accent, wax seal, alerts */
+  --garnet:            #7a1b2c;
+  --garnet-light:      #9c2238;
+  --garnet-glow:       rgba(122, 27, 44, 0.30);
+
+  /* Text — parchment scale */
+  --parchment:         #eddfc0;
+  --parchment-mid:     #c2b290;
+  --parchment-dim:     #786a54;
+
+  /* Borders */
+  --border:            rgba(196, 146, 40, 0.18);
+  --border-hover:      rgba(196, 146, 40, 0.42);
+
+  /* Candlelight hover glow */
+  --candlelight:       rgba(196, 146, 40, 0.10);
+  --candlelight-deep:  rgba(196, 146, 40, 0.18);
 }
 
-html, body {
-  height: 100%;
-  margin: 0;
-}
+/* ── Reset ── */
+html, body { height: 100%; margin: 0; }
 
 body {
-  background-color: var(--bg);
-  color: var(--text);
+  background-color: var(--midnight);
+  color: var(--parchment);
   font-family: var(--font-crimson, Georgia, 'Times New Roman', serif);
+  font-size: 17px;
+  line-height: 1.65;
+  /* Atmospheric depth — aubergine + faint garnet warmth */
   background-image:
-    radial-gradient(ellipse at 15% 25%, rgba(88, 40, 160, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 75%, rgba(50, 25, 100, 0.10) 0%, transparent 45%),
-    radial-gradient(ellipse at 50% 50%, rgba(30, 10, 60, 0.06) 0%, transparent 60%);
+    radial-gradient(ellipse at 18% 42%, rgba(58, 18, 92, 0.42) 0%, transparent 54%),
+    radial-gradient(ellipse at 80% 16%, rgba(32, 10, 62, 0.30) 0%, transparent 48%),
+    radial-gradient(ellipse at 52% 85%, rgba(88, 18, 36, 0.14) 0%, transparent 44%);
 }
 
-/* Nav links */
-.nav-link {
+/* ── Scrollbar ── */
+::-webkit-scrollbar            { width: 5px; }
+::-webkit-scrollbar-track      { background: transparent; }
+::-webkit-scrollbar-thumb      { background: var(--aubergine-light); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover{ background: rgba(196, 146, 40, 0.38); }
+
+/* ── date/time picker — keep dark ── */
+input[type="date"], input[type="time"] { color-scheme: dark; }
+
+/* ══════════════════════════════════════
+   COMPONENTS
+   ══════════════════════════════════════ */
+
+/* Card — gilded panel */
+.magic-card {
+  background: var(--aubergine-mid);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 26px 28px;
+  transition: border-color 0.28s ease, box-shadow 0.28s ease;
+}
+.magic-card:hover {
+  border-color: var(--border-hover);
+  box-shadow:
+    0 0 28px var(--candlelight),
+    0 8px 32px rgba(0, 0, 0, 0.48);
+}
+
+/* Section title — inside cards */
+.section-title {
+  font-family: var(--font-cinzel, Georgia, serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--gold);
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 2px;
-  text-decoration: none;
-  font-size: 16px;
-  font-family: var(--font-crimson, Georgia, serif);
-  color: var(--text-muted);
-  border-left: 2px solid transparent;
-  transition: all 0.15s ease;
-}
-.nav-link:hover {
-  background: var(--hover-bg);
-  color: var(--gold);
-}
-.nav-link.active {
-  background: var(--active-bg);
-  color: var(--gold-bright);
-  border-left-color: var(--gold);
+  margin: 0 0 22px 0;
 }
 
-/* Inputs */
+/* Gold horizontal rule */
+.gold-rule {
+  height: 1px;
+  border: none;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    var(--gold) 25%,
+    var(--gold) 75%,
+    transparent 100%
+  );
+  opacity: 0.18;
+  margin: 18px 0;
+}
+
+/* Input — dark with gold focus */
 .magic-input {
-  background: var(--hover-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--parchment);
   font-family: var(--font-crimson, Georgia, serif);
   font-size: 16px;
   outline: none;
-  transition: border-color 0.15s ease;
   padding: 10px 14px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
   color-scheme: dark;
+  width: 100%;
+  box-sizing: border-box;
 }
-.magic-input::placeholder { color: var(--text-muted); }
+.magic-input::placeholder {
+  color: var(--parchment-dim);
+  font-style: italic;
+}
 .magic-input:focus {
-  border-color: rgba(201, 164, 74, 0.45);
-  box-shadow: 0 0 0 2px rgba(201, 164, 74, 0.08);
+  border-color: rgba(196, 146, 40, 0.52);
+  box-shadow: 0 0 0 3px rgba(196, 146, 40, 0.07);
 }
 
-/* Gold button */
-.btn-gold {
-  padding: 10px 22px;
-  background: linear-gradient(135deg, #2a1a5e, #1a0f3a);
+/* Textarea variant */
+textarea.magic-input {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+}
+
+/* Wax seal button — garnet + gold border */
+.btn-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 24px;
+  background: radial-gradient(ellipse at 36% 30%, #9c2238 0%, #5c1020 58%, #380a12 100%);
   border: 1px solid var(--gold);
-  border-radius: 8px;
-  color: var(--gold);
+  border-radius: 7px;
+  color: var(--gold-light);
   font-family: var(--font-cinzel, Georgia, serif);
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.15s ease;
   white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.60),
+    inset 0 1px 0 rgba(196, 146, 40, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30);
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.10s ease;
+  user-select: none;
 }
-.btn-gold:hover {
-  color: var(--gold-bright);
-  box-shadow: 0 0 14px rgba(201, 164, 74, 0.2);
-  background: linear-gradient(135deg, #341e72, #221244);
+.btn-seal:hover {
+  background: radial-gradient(ellipse at 36% 30%, #b8283e 0%, #701828 58%, #460e18 100%);
+  color: var(--gold);
+  box-shadow:
+    0 0 20px var(--garnet-glow),
+    0 3px 10px rgba(0, 0, 0, 0.60),
+    inset 0 1px 0 rgba(196, 146, 40, 0.22);
+}
+.btn-seal:active {
+  transform: translateY(1px) scale(0.99);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.60),
+    inset 0 2px 6px rgba(0, 0, 0, 0.40);
 }
 
-/* Cards */
-.magic-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  padding: 24px;
-  transition: border-color 0.2s ease;
+/* Ghost/secondary button */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--parchment-dim);
+  font-family: var(--font-cinzel, Georgia, serif);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
 }
-.magic-card:hover {
-  border-color: rgba(201, 164, 74, 0.2);
+.btn-ghost:hover {
+  border-color: var(--border-hover);
+  color: var(--parchment-mid);
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(201, 164, 74, 0.35); }
-
-/* Delete × button */
+/* Delete × */
 .del-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--parchment-dim);
   cursor: pointer;
   font-size: 20px;
   line-height: 1;
   padding: 2px 6px;
-  opacity: 0.4;
-  transition: opacity 0.15s;
+  opacity: 0.32;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
-.del-btn:hover { opacity: 0.9; color: #c0604a; }
+.del-btn:hover { opacity: 1; color: #c05040; }
+
+/* List item row — todos, events, any list */
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 7px;
+  background: var(--input-bg);
+  border: 1px solid rgba(196, 146, 40, 0.08);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.item-row:hover {
+  border-color: rgba(196, 146, 40, 0.20);
+  box-shadow: 0 0 10px rgba(196, 146, 40, 0.05);
+}
+.item-row.done {
+  opacity: 0.42;
+}
+
+/* Checkbox — accent gold */
+.magic-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--gold);
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.empty-state {
+  color: var(--parchment-dim);
+  font-style: italic;
+  font-size: 16px;
+  margin: 0;
+  padding: 8px 0;
+}
+
+/* Completed sub-label */
+.completed-label {
+  font-family: var(--font-cinzel, Georgia, serif);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  margin: 16px 0 8px 0;
+  opacity: 0.7;
+}
+
+/* Sidebar nav */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  margin-bottom: 3px;
+  text-decoration: none;
+  font-family: var(--font-crimson, Georgia, serif);
+  font-size: 16px;
+  color: var(--parchment-dim);
+  border-left: 2px solid transparent;
+  transition: all 0.18s ease;
+}
+.nav-link:hover {
+  background: rgba(196, 146, 40, 0.07);
+  color: var(--parchment-mid);
+  border-left-color: rgba(196, 146, 40, 0.28);
+}
+.nav-link.active {
+  background: rgba(196, 146, 40, 0.10);
+  color: var(--gold-light);
+  border-left-color: var(--gold);
+}
+
+/* Save toast */
+.save-toast {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  background: var(--aubergine-mid);
+  border: 1px solid var(--gold);
+  color: var(--gold-light);
+  padding: 7px 18px;
+  border-radius: 7px;
+  font-family: var(--font-crimson, Georgia, serif);
+  font-size: 14px;
+  font-style: italic;
+  pointer-events: none;
+  z-index: 100;
+  animation: fadeInOut 2.2s ease forwards;
+}
+.save-toast.error {
+  border-color: #b04030;
+  color: #c05040;
+}
+@keyframes fadeInOut {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  15%  { opacity: 1; transform: translateY(0); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Garnet left-border accent — used on event rows */
+.accent-left {
+  border-left: 2px solid var(--gold);
+}

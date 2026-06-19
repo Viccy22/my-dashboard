@@ -1,54 +1,65 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 type CalendarEvent = { id: string; title: string; date: string; time?: string };
-type DashboardData = { events?: CalendarEvent[]; todos?: unknown[] };
+type DashboardData  = { events?: CalendarEvent[]; [key: string]: unknown };
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData>({});
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "saving" | "saved" | "error">("loading");
-  const [newTitle, setNewTitle] = useState("");
-  const [newDate, setNewDate] = useState("");
-  const [newTime, setNewTime] = useState("");
+  const [data,      setData]     = useState<DashboardData>({});
+  const [events,    setEvents]   = useState<CalendarEvent[]>([]);
+  const [status,    setStatus]   = useState<SaveStatus>("idle");
+  const [loading,   setLoading]  = useState(true);
+  const [newTitle,  setNewTitle] = useState("");
+  const [newDate,   setNewDate]  = useState("");
+  const [newTime,   setNewTime]  = useState("");
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch("/api/data")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((res) => {
         const d: DashboardData = res.data ?? {};
         setData(d);
         setEvents(d.events ?? []);
-        setStatus("ready");
       })
-      .catch(() => setStatus("error"));
+      .catch(() => setStatus("error"))
+      .finally(() => setLoading(false));
   }, []);
 
   const save = useCallback(async (newData: DashboardData) => {
     setStatus("saving");
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     try {
-      await fetch("/api/data", {
+      const res = await fetch("/api/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: newData }),
       });
+      if (!res.ok) throw new Error();
       setStatus("saved");
-      setTimeout(() => setStatus("ready"), 2000);
     } catch {
       setStatus("error");
+    } finally {
+      toastTimer.current = setTimeout(() => setStatus("idle"), 2200);
     }
   }, []);
 
   const addEvent = () => {
     if (!newTitle.trim() || !newDate) return;
     const event: CalendarEvent = {
-      id: crypto.randomUUID(),
+      id:    crypto.randomUUID(),
       title: newTitle.trim(),
-      date: newDate,
-      time: newTime || undefined,
+      date:  newDate,
+      time:  newTime || undefined,
     };
-    const updated = [...events, event].sort((a, b) => a.date.localeCompare(b.date));
+    const updated = [...events, event].sort((a, b) => {
+      const cmp = a.date.localeCompare(b.date);
+      if (cmp !== 0) return cmp;
+      return (a.time ?? "").localeCompare(b.time ?? "");
+    });
     setEvents(updated);
     setNewTitle("");
     setNewDate("");
@@ -73,67 +84,34 @@ export default function DashboardPage() {
 
   const formatTime = (t: string) => {
     const [h, m] = t.split(":").map(Number);
-    const suffix = h >= 12 ? "pm" : "am";
-    const hour = h % 12 || 12;
-    return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+    return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
   };
 
-  const isUpcoming = (dateStr: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return new Date(dateStr + "T00:00:00") >= today;
-  };
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcomingEvents = events.filter((e) => e.date >= todayStr);
+  const pastEvents     = events.filter((e) => e.date <  todayStr);
 
-  const upcomingEvents = events.filter((e) => isUpcoming(e.date));
-  const pastEvents = events.filter((e) => !isUpcoming(e.date));
-
-  if (status === "loading") {
-    return (
-      <p style={{ color: "var(--text-muted)", fontFamily: "var(--font-crimson)", fontStyle: "italic" }}>
-        Summoning your data…
-      </p>
-    );
+  if (loading) {
+    return <p className="empty-state">Summoning your data…</p>;
   }
 
   return (
-    <div style={{ maxWidth: "780px", position: "relative" }}>
+    <div style={{ maxWidth: "800px" }}>
 
-      {/* Save status badge */}
-      {(status === "saving" || status === "saved" || status === "error") && (
-        <div style={{
-          position: "fixed", top: "20px", right: "24px",
-          background: "var(--card-bg)",
-          border: `1px solid ${status === "error" ? "#c06040" : "var(--gold)"}`,
-          color: status === "error" ? "#c06040" : "var(--gold)",
-          padding: "8px 18px", borderRadius: "8px",
-          fontFamily: "var(--font-crimson)", fontSize: "14px",
-          fontStyle: "italic", zIndex: 50,
-        }}>
-          {status === "saving" ? "Saving…" : status === "saved" ? "Saved ✦" : "Error saving"}
+      {status !== "idle" && (
+        <div className={`save-toast${status === "error" ? " error" : ""}`}>
+          {status === "saving" ? "Saving…" : status === "saved" ? "Saved  ✦" : "Could not save — check your connection."}
         </div>
       )}
 
-      {/* Upcoming Schedule card */}
-      <div className="magic-card" style={{ marginBottom: "0" }}>
+      <div className="magic-card">
 
-        {/* Card heading */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "22px" }}>
-          <span style={{ color: "var(--gold)", fontSize: "14px" }}>✦</span>
-          <h2 style={{
-            fontFamily: "var(--font-cinzel)",
-            fontSize: "14px",
-            letterSpacing: "0.12em",
-            color: "var(--gold)",
-            margin: 0,
-            fontWeight: "700",
-            textTransform: "uppercase",
-          }}>
-            Upcoming Schedule
-          </h2>
+        <div className="section-title">
+          <span>✦</span> Upcoming Schedule
         </div>
 
         {/* Add event form */}
-        <div style={{ display: "flex", gap: "8px", marginBottom: "24px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
           <input
             className="magic-input"
             type="text"
@@ -148,7 +126,7 @@ export default function DashboardPage() {
             type="date"
             value={newDate}
             onChange={(e) => setNewDate(e.target.value)}
-            style={{ flex: "1 1 140px" }}
+            style={{ flex: "1 1 148px" }}
           />
           <input
             className="magic-input"
@@ -157,48 +135,37 @@ export default function DashboardPage() {
             onChange={(e) => setNewTime(e.target.value)}
             style={{ flex: "1 1 110px" }}
           />
-          <button className="btn-gold" onClick={addEvent}>
-            Add
-          </button>
+          <button className="btn-seal" onClick={addEvent}>Add</button>
         </div>
 
-        {/* Divider */}
-        <div style={{
-          height: "1px",
-          background: "linear-gradient(to right, var(--gold), transparent)",
-          opacity: 0.2,
-          marginBottom: "18px",
-        }} />
+        <hr className="gold-rule" />
 
-        {/* Events list */}
+        {/* Upcoming events */}
         {upcomingEvents.length === 0 ? (
-          <p style={{
-            color: "var(--text-muted)", fontFamily: "var(--font-crimson)",
-            fontStyle: "italic", fontSize: "16px", margin: 0,
-          }}>
-            No upcoming events — your schedule is clear.
-          </p>
+          <p className="empty-state">No upcoming events — your schedule is clear.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
             {upcomingEvents.map((event) => (
-              <div key={event.id} style={{
-                display: "flex", alignItems: "center", gap: "14px",
-                padding: "13px 16px", borderRadius: "8px",
-                background: "var(--hover-bg)",
-                borderLeft: "2px solid var(--gold)",
-              }}>
+              <div key={event.id} className="item-row accent-left" style={{ marginBottom: "6px" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{
-                    fontFamily: "var(--font-crimson)", fontSize: "17px",
-                    color: "var(--text)", fontWeight: "600",
+                    fontFamily: "var(--font-crimson)",
+                    fontSize: "17px",
+                    color: "var(--parchment)",
+                    fontWeight: 600,
+                    lineHeight: 1.3,
                   }}>
                     {event.title}
                   </div>
                   <div style={{
-                    fontFamily: "var(--font-crimson)", fontSize: "14px",
-                    color: "var(--text-muted)", fontStyle: "italic", marginTop: "2px",
+                    fontFamily: "var(--font-crimson)",
+                    fontSize: "14px",
+                    color: "var(--parchment-dim)",
+                    fontStyle: "italic",
+                    marginTop: "2px",
                   }}>
-                    {formatDate(event.date)}{event.time ? ` · ${formatTime(event.time)}` : ""}
+                    {formatDate(event.date)}
+                    {event.time && ` · ${formatTime(event.time)}`}
                   </div>
                 </div>
                 <button className="del-btn" onClick={() => deleteEvent(event.id)} title="Remove event">×</button>
@@ -207,33 +174,32 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Past events collapsible */}
+        {/* Past events — collapsed */}
         {pastEvents.length > 0 && (
-          <details style={{ marginTop: "20px" }}>
+          <details style={{ marginTop: "16px" }}>
             <summary style={{
-              color: "var(--text-muted)", fontFamily: "var(--font-crimson)",
-              fontStyle: "italic", fontSize: "14px", cursor: "pointer", userSelect: "none",
+              color: "var(--parchment-dim)",
+              fontFamily: "var(--font-crimson)",
+              fontStyle: "italic",
+              fontSize: "14px",
+              cursor: "pointer",
+              userSelect: "none",
+              listStyle: "none",
             }}>
               {pastEvents.length} past event{pastEvents.length !== 1 ? "s" : ""}
             </summary>
-            <div style={{ marginTop: "10px", opacity: 0.5, display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ marginTop: "10px", opacity: 0.44 }}>
               {pastEvents.map((event) => (
-                <div key={event.id} style={{
-                  display: "flex", alignItems: "center", gap: "14px",
-                  padding: "10px 14px", borderRadius: "8px",
+                <div key={event.id} className="item-row" style={{
+                  marginBottom: "5px",
+                  textDecoration: "line-through",
                 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontFamily: "var(--font-crimson)", fontSize: "16px",
-                      color: "var(--text)", textDecoration: "line-through",
-                    }}>
+                    <div style={{ fontFamily: "var(--font-crimson)", fontSize: "16px", color: "var(--parchment)" }}>
                       {event.title}
                     </div>
-                    <div style={{
-                      fontFamily: "var(--font-crimson)", fontSize: "13px",
-                      color: "var(--text-muted)", fontStyle: "italic",
-                    }}>
-                      {formatDate(event.date)}{event.time ? ` · ${formatTime(event.time)}` : ""}
+                    <div style={{ fontFamily: "var(--font-crimson)", fontSize: "13px", color: "var(--parchment-dim)", fontStyle: "italic" }}>
+                      {formatDate(event.date)}{event.time && ` · ${formatTime(event.time)}`}
                     </div>
                   </div>
                   <button className="del-btn" onClick={() => deleteEvent(event.id)}>×</button>
