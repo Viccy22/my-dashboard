@@ -3,8 +3,9 @@
 import { usePathname } from "next/navigation";
 
 const pageTitles: Record<string, string> = {
-  "/":      "Dashboard",
-  "/todos": "To-Do List",
+  "/":        "Dashboard",
+  "/todos":   "To-Do List",
+  "/garage":  "Garage",
 };
 
 export default function Header() {
