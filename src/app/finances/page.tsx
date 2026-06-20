@@ -264,11 +264,11 @@ type EditingRow = { date: string; source: RowSource; currentAmount: number };
 type EditingBill = { id: string; field: "amount" };
 
 export default function FinancesPage() {
-  const [rawData,  setRawData]  = useState<DashboardData>({});
   const [finances, setFinances] = useState<FinancesData>(seedFinances());
   const [status,   setStatus]   = useState<SaveStatus>("idle");
   const [loading,  setLoading]  = useState(true);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timer      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashboardData>({});
 
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput,   setBalanceInput]   = useState("");
@@ -313,7 +313,7 @@ export default function FinancesPage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashboardData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const f = d.finances ?? seedFinances();
         if (!f.items || f.items.length === 0) f.items = DEFAULT_ITEMS;
         if (!f.overrides) f.overrides = [];
@@ -334,8 +334,8 @@ export default function FinancesPage() {
   const save = useCallback(async (fin: FinancesData) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, finances: fin };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, finances: fin };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", {
         method: "POST",
@@ -349,36 +349,40 @@ export default function FinancesPage() {
     } finally {
       timer.current = setTimeout(() => setStatus("idle"), 2000);
     }
-  }, [rawData]);
+  }, []);
 
   // ── Savings helpers ───────────────────────────────────────────────────────
   const saveSavings = useCallback(async (sv: SavingsData, debts?: DebtAccount[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const fin = { ...finances, savings: sv, debt: { accounts: debts ?? debtAccounts } };
-    const newData = { ...rawData, finances: fin };
-    setRawData(newData); setFinances(fin);
+    const baseFin = (rawDataRef.current.finances ?? seedFinances()) as FinancesData;
+    const fin = { ...baseFin, savings: sv, debt: { accounts: debts ?? debtAccounts } };
+    const newData = { ...rawDataRef.current, finances: fin };
+    rawDataRef.current = newData;
+    setFinances(fin);
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData, finances, debtAccounts]);
+  }, [debtAccounts]);
 
   const saveDebts = useCallback(async (debts: DebtAccount[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const fin = { ...finances, savings, debt: { accounts: debts } };
-    const newData = { ...rawData, finances: fin };
-    setRawData(newData); setFinances(fin);
+    const baseFin = (rawDataRef.current.finances ?? seedFinances()) as FinancesData;
+    const fin = { ...baseFin, savings: baseFin.savings ?? savings, debt: { accounts: debts } };
+    const newData = { ...rawDataRef.current, finances: fin };
+    rawDataRef.current = newData;
+    setFinances(fin);
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData, finances, savings]);
+  }, [savings]);
 
   // ── Balance ───────────────────────────────────────────────────────────────
   const saveBalance = () => {
@@ -961,11 +965,13 @@ export default function FinancesPage() {
             const pct = acct.limit ? Math.min(100, (acct.balance / acct.limit) * 100) : null;
             const monthlyRate = acct.apr / 100 / 12;
             const interestRatio = monthlyRate > 0 ? (monthlyRate * acct.balance) / acct.minPayment : 0;
+            const paymentBelowInterest = !acct.deferred && acct.minPayment > 0 && monthlyRate > 0 && interestRatio >= 1;
             const monthsToPayoff = acct.deferred ? null
               : acct.minPayment <= 0 ? null
-              : monthlyRate > 0 && interestRatio < 1
+              : paymentBelowInterest ? null
+              : monthlyRate > 0
                 ? Math.ceil(-Math.log(1 - interestRatio) / Math.log(1 + monthlyRate))
-                : monthlyRate === 0 ? Math.ceil(acct.balance / acct.minPayment) : null;
+                : Math.ceil(acct.balance / acct.minPayment);
             const isEditingBal = editingDebtId === acct.id;
             const activeNonDeferred = debtAccounts.filter(d => !d.deferred && d.balance > 0).sort((a, b) => a.balance - b.balance);
             const snowballRank = activeNonDeferred.findIndex(d => d.id === acct.id);
@@ -987,7 +993,8 @@ export default function FinancesPage() {
                       {acct.minPayment > 0 && <span style={{ fontSize: "12px", color: "var(--text-3)" }}>Min: {fmt$(acct.minPayment)}/mo</span>}
                       {acct.apr > 0 && <span style={{ fontSize: "12px", color: "var(--text-3)" }}>APR: {acct.apr}%</span>}
                       {acct.annualFee && <span style={{ fontSize: "12px", color: "var(--yellow)" }}>Annual fee ${acct.annualFee} ({["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][(acct.annualFeeMonth ?? 1) - 1]})</span>}
-                      {monthsToPayoff !== null && monthsToPayoff > 0 && monthsToPayoff < 999 && <span style={{ fontSize: "12px", color: "var(--text-3)" }}>~{monthsToPayoff} mo to pay off at min</span>}
+                      {paymentBelowInterest && <span style={{ fontSize: "12px", color: "var(--red)", fontWeight: 600 }}>⚠ Min payment doesn&apos;t cover interest — balance will grow</span>}
+                      {!paymentBelowInterest && monthsToPayoff !== null && monthsToPayoff > 0 && monthsToPayoff < 999 && <span style={{ fontSize: "12px", color: "var(--text-3)" }}>~{monthsToPayoff} mo to pay off at min</span>}
                     </div>
                     {acct.notes && <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: "4px 0 0", fontStyle: "italic" }}>{acct.notes}</p>}
                   </div>

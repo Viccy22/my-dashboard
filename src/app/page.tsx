@@ -57,7 +57,9 @@ function fmtDate(s: string) {
   return new Date(s + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 function fmtTime(t: string) {
+  if (!t || !t.includes(":")) return t || "";
   const [h, m] = t.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return t;
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
 }
 function daysBetween(a: string, b: string) {

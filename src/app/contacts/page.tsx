@@ -113,8 +113,18 @@ function ContactForm({
         <label style={{ fontSize: "11px", color: "var(--text-3)", display: "block", marginBottom: "3px" }}>Notes</label>
         <input className="input" value={f.notes} onChange={e => setForm(x => ({ ...x, notes: e.target.value }))} placeholder="How you know them, anything to remember…" />
       </div>
-      <div style={{ display: "flex", gap: "8px" }}>
-        <button className="btn btn-primary" onClick={() => { if (f.name.trim()) onSave(f); }}>Save</button>
+      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <button className="btn btn-primary" onClick={() => {
+          if (!f.name.trim()) return;
+          if (f.birthday) {
+            const parts = f.birthday.split("-").map(Number);
+            if (f.birthday.length !== 5 || parts.length !== 2 || parts[0] < 1 || parts[0] > 12 || parts[1] < 1 || parts[1] > 31) {
+              alert("Birthday must be in MM-DD format, e.g. 07-15");
+              return;
+            }
+          }
+          onSave(f);
+        }}>Save</button>
         <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
       </div>
     </div>

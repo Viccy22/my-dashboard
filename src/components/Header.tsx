@@ -31,7 +31,7 @@ function HamburgerIcon() {
   );
 }
 
-export default function Header({ onMenuOpen }: { onMenuOpen?: () => void }) {
+export default function Header({ onMenuOpen, isMenuOpen }: { onMenuOpen?: () => void; isMenuOpen?: boolean }) {
   const pathname = usePathname();
   const title = titles[pathname] ?? "Dashboard";
 
@@ -49,7 +49,7 @@ export default function Header({ onMenuOpen }: { onMenuOpen?: () => void }) {
         className="hamburger-btn"
         onClick={onMenuOpen}
         aria-label="Open navigation menu"
-        aria-expanded={false}
+        aria-expanded={isMenuOpen ?? false}
       >
         <HamburgerIcon />
       </button>

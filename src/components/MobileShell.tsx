@@ -41,7 +41,7 @@ export default function MobileShell({ children }: { children: React.ReactNode })
       <Sidebar isOpen={open} onClose={() => setOpen(false)} />
 
       <div className="main-area">
-        <Header onMenuOpen={() => setOpen(true)} />
+        <Header onMenuOpen={() => setOpen(true)} isMenuOpen={open} />
         <main className="page">{children}</main>
       </div>
     </div>

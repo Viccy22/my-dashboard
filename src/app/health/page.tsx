@@ -187,7 +187,7 @@ export default function HealthPage() {
 
   const logWeight = () => {
     const val = parseFloat(wInput);
-    if (!val || !wDate) return;
+    if (!val || val <= 0 || !wDate) return;
     const entry: WeightEntry = { id: crypto.randomUUID(), date: wDate, weight: val, note: wNote.trim() };
     const updated = [...weights.filter(w => w.date !== wDate), entry].sort((a, b) => b.date.localeCompare(a.date));
     setWeights(updated); saveWeights(updated);
