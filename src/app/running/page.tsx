@@ -87,7 +87,6 @@ function blankRun(): Omit<Run, "id"> {
 }
 
 export default function RunningPage() {
-  const [rawData, setRawData] = useState<DashData>({});
   const [runs,    setRuns]    = useState<Run[]>([]);
   const [plans,   setPlans]   = useState<TrainingPlan[]>([]);
   const [status,  setStatus]  = useState<SaveStatus>("idle");
@@ -100,13 +99,14 @@ export default function RunningPage() {
     name: "", startDate: todayStr(), goalDate: "", goalEvent: "", goalDistance: 0, notes: "", active: true,
   });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
 
   useEffect(() => {
     fetch("/api/data")
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         setRuns(d.running?.runs ?? []);
         setPlans(d.running?.plans ?? []);
       })
@@ -117,15 +117,15 @@ export default function RunningPage() {
   const save = useCallback(async (r: Run[], p: TrainingPlan[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, running: { runs: r, plans: p } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, running: { runs: r, plans: p } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const addRun = () => {
     if (!form.distance || !form.duration) return;

@@ -63,7 +63,6 @@ const DragIcon = () => (
 const EMOJI_OPTIONS = ["✅", "💧", "🏃", "🧘", "📖", "💊", "🥗", "🛌", "🧹", "✍️", "🚶", "🎯", "🎸", "🧠", "💪", "🌿", "☀️", "🍎", "🚫🍺", "🧘‍♀️"];
 
 export default function HabitsPage() {
-  const [rawData, setRawData] = useState<DashData>({});
   const [habits,  setHabits]  = useState<Habit[]>([]);
   const [logs,    setLogs]    = useState<HabitLog[]>([]);
   const [status,  setStatus]  = useState<SaveStatus>("idle");
@@ -75,6 +74,7 @@ export default function HabitsPage() {
   const [newColor, setNewColor] = useState(COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
   const today = todayStr();
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function HabitsPage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const h = d.habits?.habits ?? [];
         setHabits(h.sort((a: Habit, b: Habit) => a.order - b.order));
         setLogs(d.habits?.logs ?? []);
@@ -94,13 +94,13 @@ export default function HabitsPage() {
   const persist = useCallback((updHabits: Habit[], updLogs: HabitLog[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, habits: { habits: updHabits, logs: updLogs } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, habits: { habits: updHabits, logs: updLogs } };
+    rawDataRef.current = newData;
     fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) })
       .then(r => { if (!r.ok) throw new Error(); setStatus("saved"); })
       .catch(() => setStatus("error"))
       .finally(() => { timer.current = setTimeout(() => setStatus("idle"), 2000); });
-  }, [rawData]);
+  }, []);
 
   const toggleLog = (habitId: string) => {
     const already = logs.some(l => l.date === today && l.habitId === habitId);

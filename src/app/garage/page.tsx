@@ -129,11 +129,11 @@ const XIcon = () => (
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function GaragePage() {
-  const [rawData, setRawData] = useState<DashboardData>({});
   const [garage,  setGarage]  = useState<GarageData>({ currentMileage: 0, services: [], projects: [] });
   const [status,  setStatus]  = useState<SaveStatus>("idle");
   const [loading, setLoading] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashboardData>({});
 
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -148,7 +148,7 @@ export default function GaragePage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashboardData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const g = d.garage ?? { currentMileage: 0, services: seedServices(), projects: [] };
         if (!g.services || g.services.length === 0) g.services = seedServices();
         setGarage(g);
@@ -161,21 +161,21 @@ export default function GaragePage() {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
     try {
-      const newData = { ...rawData, garage: newGarage };
+      const newData = { ...rawDataRef.current, garage: newGarage };
       const res = await fetch("/api/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: newData }),
       });
       if (!res.ok) throw new Error();
-      setRawData(newData);
+      rawDataRef.current = newData;
       setStatus("saved");
     } catch {
       setStatus("error");
     } finally {
       timer.current = setTimeout(() => setStatus("idle"), 2000);
     }
-  }, [rawData]);
+  }, []);
 
   function updateGarage(next: GarageData) { setGarage(next); save(next); }
 

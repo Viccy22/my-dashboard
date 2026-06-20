@@ -132,7 +132,6 @@ const BackIcon = () => (
 );
 
 export default function FestivalsPage() {
-  const [rawData, setRawData] = useState<DashData>({});
   const [fests,   setFests]   = useState<Festival[]>([]);
   const [status,  setStatus]  = useState<SaveStatus>("idle");
   const [loading, setLoading] = useState(true);
@@ -141,13 +140,14 @@ export default function FestivalsPage() {
   const [adding,   setAdding]   = useState(false);
   const [newName,  setNewName]  = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
 
   useEffect(() => {
     fetch("/api/data")
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const saved = d.festivals?.festivals ?? [];
         setFests(saved.length ? saved : SEED_FESTIVALS);
       })
@@ -158,15 +158,15 @@ export default function FestivalsPage() {
   const save = useCallback(async (updated: Festival[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, festivals: { festivals: updated } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, festivals: { festivals: updated } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const updateFest = (id: string, patch: Partial<Festival>) => {
     const updated = fests.map(f => f.id === id ? { ...f, ...patch } : f);

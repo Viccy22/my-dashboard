@@ -187,7 +187,6 @@ function HolidayCard({ holiday, onUpdate, onDelete }: { holiday: Holiday; onUpda
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function HolidaysPage() {
-  const [rawData,   setRawData]   = useState<DashData>({});
   const [holidays,  setHolidays]  = useState<Holiday[]>([]);
   const [status,    setStatus]    = useState<SaveStatus>("idle");
   const [loading,   setLoading]   = useState(true);
@@ -196,13 +195,14 @@ export default function HolidaysPage() {
   const [newDate,   setNewDate]   = useState("");
   const [showPast,  setShowPast]  = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
 
   useEffect(() => {
     fetch("/api/data")
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const saved = d.holidays?.holidays;
         if (saved && saved.length > 0) {
           setHolidays(saved);
@@ -221,15 +221,15 @@ export default function HolidaysPage() {
   const save = useCallback(async (updated: Holiday[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, holidays: { holidays: updated } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, holidays: { holidays: updated } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const addHoliday = () => {
     if (!newName.trim()) return;

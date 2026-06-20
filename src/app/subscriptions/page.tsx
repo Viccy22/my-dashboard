@@ -149,7 +149,6 @@ function SubForm({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SubscriptionsPage() {
-  const [rawData, setRawData] = useState<DashData>({});
   const [subs,    setSubs]    = useState<Subscription[]>([]);
   const [status,  setStatus]  = useState<SaveStatus>("idle");
   const [loading, setLoading] = useState(true);
@@ -158,13 +157,14 @@ export default function SubscriptionsPage() {
   const [filter,  setFilter]  = useState<string>("All");
   const [showInactive, setShowInactive] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
 
   useEffect(() => {
     fetch("/api/data")
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         setSubs(d.subscriptions?.subscriptions ?? []);
       })
       .catch(() => setStatus("error"))
@@ -175,21 +175,21 @@ export default function SubscriptionsPage() {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
     // Sync active subscriptions into finances items (sub_ prefix)
-    const existingFin = rawData.finances as FinData | undefined;
+    const existingFin = rawDataRef.current.finances as FinData | undefined;
     const nonSubItems = (existingFin?.items ?? []).filter((it: FinItem) => !it.id.startsWith("sub_"));
     const subItems = updated.filter(s => s.active).map(subToFinItem);
     const newFin: FinData | undefined = existingFin
       ? { ...existingFin, items: [...nonSubItems, ...subItems] }
       : undefined;
-    const newData: DashData = { ...rawData, subscriptions: { subscriptions: updated }, ...(newFin ? { finances: newFin } : {}) };
-    setRawData(newData);
+    const newData: DashData = { ...rawDataRef.current, subscriptions: { subscriptions: updated }, ...(newFin ? { finances: newFin } : {}) };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const addSub = (data: Omit<Subscription, "id">) => {
     const next = [...subs, { ...data, id: crypto.randomUUID() }];

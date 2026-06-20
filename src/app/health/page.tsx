@@ -106,7 +106,6 @@ function ScheduleBadge({ lastDate, intervalDays, label }: { lastDate: string | n
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function HealthPage() {
-  const [rawData,  setRawData]  = useState<DashData>({});
   const [logs,     setLogs]     = useState<DayLog[]>([]);
   const [skincare, setSkincare] = useState<SkincareEntry[]>([]);
   const [status,   setStatus]   = useState<SaveStatus>("idle");
@@ -129,6 +128,7 @@ export default function HealthPage() {
   const [scToday,   setScToday]   = useState<SkincareEntry | null>(null);
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
   const today = todayStr();
 
   useEffect(() => {
@@ -146,7 +146,7 @@ export default function HealthPage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const sc = d.health?.skincare ?? [];
         const lg = d.health?.logs ?? [];
         setSkincare(sc);
@@ -162,28 +162,28 @@ export default function HealthPage() {
   const saveAll = useCallback(async (newLogs: DayLog[], newSkincare: SkincareEntry[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, health: { logs: newLogs, skincare: newSkincare } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, health: { logs: newLogs, skincare: newSkincare } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const saveWeights = useCallback(async (updated: WeightEntry[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, weight: { entries: updated } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, weight: { entries: updated } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const logWeight = () => {
     const val = parseFloat(wInput);

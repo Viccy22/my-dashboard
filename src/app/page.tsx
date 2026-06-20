@@ -394,7 +394,7 @@ export default function HomePage() {
                 <p style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>Morning</p>
                 <CheckItem label="Face wash"    done={todaySkincare?.am.faceWash    ?? false} onToggle={() => toggleSkincare("faceWash",    "am")} />
                 <CheckItem label="Toner"        done={todaySkincare?.am.toner        ?? false} onToggle={() => toggleSkincare("toner",        "am")} />
-                {azelaicToday && <CheckItem label="Azelaic acid" done={todaySkincare?.am.azelaicAcid ?? false} onToggle={() => toggleSkincare("azelaicAcid", "am")} accent="var(--accent)" />}
+                <CheckItem label="Azelaic acid" done={todaySkincare?.am.azelaicAcid ?? false} onToggle={() => toggleSkincare("azelaicAcid", "am")} accent="var(--accent)" />
                 <CheckItem label="Moisturizer"  done={todaySkincare?.am.moisturizer  ?? false} onToggle={() => toggleSkincare("moisturizer",  "am")} />
                 <CheckItem label="SPF"          done={todaySkincare?.am.spf          ?? false} onToggle={() => toggleSkincare("spf",          "am")} />
               </div>

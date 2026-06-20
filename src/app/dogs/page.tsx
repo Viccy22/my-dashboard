@@ -906,19 +906,19 @@ function DogCard({ dog, onChange }: { dog: Dog; onChange: (updated: Dog) => void
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DogsPage() {
-  const [rawData,  setRawData]  = useState<DashData>({});
   const [dogs,     setDogs]     = useState<Dog[]>(DEFAULT_DOGS);
   const [status,   setStatus]   = useState<SaveStatus>("idle");
   const [loading,  setLoading]  = useState(true);
   const timer     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
 
   useEffect(() => {
     fetch("/api/data")
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const saved = d.dogs?.dogs;
         if (saved && saved.length > 0) {
           // Ensure new fields exist on older saved data
@@ -937,8 +937,8 @@ export default function DogsPage() {
   const save = useCallback(async (updated: Dog[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, dogs: { dogs: updated } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, dogs: { dogs: updated } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", {
         method: "POST",
@@ -952,7 +952,7 @@ export default function DogsPage() {
     } finally {
       timer.current = setTimeout(() => setStatus("idle"), 2000);
     }
-  }, [rawData]);
+  }, []);
 
   const handleChange = (updated: Dog) => {
     const newDogs = dogs.map(d => d.id === updated.id ? updated : d);

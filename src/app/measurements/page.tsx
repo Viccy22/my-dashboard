@@ -249,20 +249,20 @@ function RoomCard({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MeasurementsPage() {
-  const [rawData, setRawData] = useState<DashData>({});
   const [rooms,   setRooms]   = useState<Room[]>([]);
   const [status,  setStatus]  = useState<SaveStatus>("idle");
   const [loading, setLoading] = useState(true);
   const [newRoom, setNewRoom] = useState("");
   const [addingRoom, setAddingRoom] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
 
   useEffect(() => {
     fetch("/api/data")
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const saved = d.measurements?.rooms;
         setRooms(saved && saved.length > 0 ? saved : seedRooms());
       })
@@ -273,8 +273,8 @@ export default function MeasurementsPage() {
   const save = useCallback(async (updated: Room[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, measurements: { rooms: updated } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, measurements: { rooms: updated } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", {
         method: "POST",
@@ -285,7 +285,7 @@ export default function MeasurementsPage() {
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const updateRoom = (updated: Room) => {
     const next = rooms.map(r => r.id === updated.id ? updated : r);

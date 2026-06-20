@@ -100,7 +100,6 @@ function EventForm({
 
 export default function CalendarPage() {
   const now = new Date();
-  const [rawData,   setRawData]   = useState<DashData>({});
   const [events,    setEvents]    = useState<CalEvent[]>([]);
   const [billItems, setBillItems] = useState<RecurringItem[]>([]);
   const [overlays,  setOverlays]  = useState<Overlay[]>([]);
@@ -112,6 +111,7 @@ export default function CalendarPage() {
   const [editId,   setEditId]   = useState<string | null>(null);    // event being edited
   const [view,     setView]     = useState<"month" | "list">("month");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
   const today = todayStr();
 
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function CalendarPage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         setEvents(d.events ?? []);
         setBillItems((d.finances?.items ?? []).filter((it: RecurringItem) => it.active && it.amount < 0));
 
@@ -143,15 +143,15 @@ export default function CalendarPage() {
   const save = useCallback(async (updated: CalEvent[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, events: updated };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, events: updated };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const addEvent = (data: Omit<CalEvent, "id">) => {
     const next = [...events, { ...data, id: crypto.randomUUID() }];

@@ -74,20 +74,20 @@ const BackIcon = () => (
 );
 
 export default function VacationsPage() {
-  const [rawData, setRawData] = useState<DashData>({});
   const [trips,   setTrips]   = useState<Trip[]>([]);
   const [status,  setStatus]  = useState<SaveStatus>("idle");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>("details");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
 
   useEffect(() => {
     fetch("/api/data")
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         setTrips(d.vacations?.trips ?? []);
       })
       .catch(() => setStatus("error"))
@@ -97,15 +97,15 @@ export default function VacationsPage() {
   const save = useCallback(async (updated: Trip[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, vacations: { trips: updated } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, vacations: { trips: updated } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const updateTrip = (id: string, patch: Partial<Trip>) => {
     const updated = trips.map(t => t.id === id ? { ...t, ...patch } : t);

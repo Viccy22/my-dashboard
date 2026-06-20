@@ -33,7 +33,6 @@ const PencilIcon = () => (
 );
 
 export default function MaintenancePage() {
-  const [rawData,      setRawData]      = useState<DashData>({});
   const [maint,        setMaint]        = useState<MaintenanceData>({ tasks: [], completions: [] });
   const [status,       setStatus]       = useState<SaveStatus>("idle");
   const [loading,      setLoading]      = useState(true);
@@ -50,6 +49,7 @@ export default function MaintenancePage() {
   const [repNotes,     setRepNotes]     = useState("");
   const [editRepId,    setEditRepId]    = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
   const today = todayStr();
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function MaintenancePage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const saved = d.maintenance;
         // Detect old format (had `frequency` field) → replace with seeds
         if (!saved?.tasks?.length || (saved.tasks[0] as unknown as { frequency?: string }).frequency) {
@@ -74,28 +74,28 @@ export default function MaintenancePage() {
   const save = useCallback(async (updated: MaintenanceData) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, maintenance: updated };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, maintenance: updated };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const saveReplacements = useCallback(async (items: Replacement[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, replacements: { items } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, replacements: { items } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const addReplacement = () => {
     if (!repName.trim()) return;

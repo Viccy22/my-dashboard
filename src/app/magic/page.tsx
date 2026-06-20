@@ -46,7 +46,6 @@ const XIcon = () => (
 );
 
 export default function MagicPage() {
-  const [rawData, setRawData] = useState<DashData>({});
   const [games,   setGames]   = useState<Game[]>([]);
   const [status,  setStatus]  = useState<SaveStatus>("idle");
   const [loading, setLoading] = useState(true);
@@ -54,13 +53,14 @@ export default function MagicPage() {
   const [scoreEditId, setScoreEditId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Game, "id">>({ date: todayStr(), opponent: "", homeAway: "home", ourScore: null, theirScore: null, notes: "" });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
 
   useEffect(() => {
     fetch("/api/data")
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         setGames(d.magic?.games ?? []);
       })
       .catch(() => setStatus("error"))
@@ -70,15 +70,15 @@ export default function MagicPage() {
   const save = useCallback(async (updated: Game[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, magic: { games: updated } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, magic: { games: updated } };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const addGame = () => {
     if (!form.opponent.trim() || !form.date) return;

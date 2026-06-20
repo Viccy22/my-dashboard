@@ -57,7 +57,6 @@ const XIcon = () => (
 );
 
 export default function SchoolPage() {
-  const [rawData,     setRawData]     = useState<DashData>({});
   const [school,      setSchool]      = useState<SchoolData>(seedData());
   const [status,      setStatus]      = useState<SaveStatus>("idle");
   const [loading,     setLoading]     = useState(true);
@@ -66,6 +65,7 @@ export default function SchoolPage() {
   const [addingAssign,setAddingAssign]= useState(false);
   const [editingDegree,setEditingDegree] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
   const today = todayStr();
 
   const [courseForm, setCourseForm] = useState<Omit<Course, "id">>({
@@ -81,7 +81,7 @@ export default function SchoolPage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         const s = d.school ?? seedData();
         if (!s.degree) s.degree = seedData().degree;
         if (!s.courses) s.courses = [];
@@ -95,15 +95,15 @@ export default function SchoolPage() {
   const save = useCallback(async (s: SchoolData) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, school: s };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, school: s };
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [rawData]);
+  }, []);
 
   const addCourse = () => {
     if (!courseForm.name.trim()) return;
