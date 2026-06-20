@@ -311,29 +311,6 @@ export default function HomePage() {
         <p className="sub">{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</p>
       </div>
 
-      {/* Mobile-only quick-nav strip — hidden on desktop via CSS */}
-      <div className="mobile-shortcuts-row">
-        {[
-          { href: "/finances",     label: "Finance",     icon: "💰" },
-          { href: "/health",       label: "Health",       icon: "❤️" },
-          { href: "/contacts",     label: "Contacts",     icon: "👥" },
-          { href: "/maintenance",  label: "Maintenance",  icon: "🔧" },
-          { href: "/dogs",         label: "Dogs",         icon: "🐾" },
-          { href: "/calendar",     label: "Calendar",     icon: "📅" },
-          { href: "/running",      label: "Running",      icon: "🏃" },
-          { href: "/vacations",    label: "Vacations",    icon: "✈️" },
-          { href: "/habits",       label: "Habits",       icon: "✅" },
-          { href: "/festivals",    label: "Festivals",    icon: "🎪" },
-          { href: "/holidays",     label: "Holidays",     icon: "🎉" },
-          { href: "/magic",        label: "Magic",        icon: "🏀" },
-        ].map(s => (
-          <a key={s.href} href={s.href} className="mobile-shortcut">
-            <span className="mobile-shortcut-icon">{s.icon}</span>
-            <span className="mobile-shortcut-label">{s.label}</span>
-          </a>
-        ))}
-      </div>
-
       <div className="dash-grid dash-main-aside">
 
         {/* ── Left column ── */}

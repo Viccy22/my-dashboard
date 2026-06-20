@@ -23,7 +23,15 @@ const titles: Record<string, string> = {
   "/magic":        "Orlando Magic",
 };
 
-export default function Header() {
+function HamburgerIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+      <path d="M3 5h14M3 10h14M3 15h14" />
+    </svg>
+  );
+}
+
+export default function Header({ onMenuOpen }: { onMenuOpen?: () => void }) {
   const pathname = usePathname();
   const title = titles[pathname] ?? "Dashboard";
 
@@ -36,6 +44,16 @@ export default function Header() {
 
   return (
     <header className="topbar">
+      {/* Hamburger — visible on mobile only (CSS controls display) */}
+      <button
+        className="hamburger-btn"
+        onClick={onMenuOpen}
+        aria-label="Open navigation menu"
+        aria-expanded={false}
+      >
+        <HamburgerIcon />
+      </button>
+
       <span className="topbar-title">{title}</span>
       <span className="topbar-date">{today}</span>
     </header>

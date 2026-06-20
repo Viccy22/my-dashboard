@@ -223,12 +223,31 @@ const groups: NavGroup[] = [
   },
 ];
 
-export default function Sidebar() {
+function XIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M4 4l10 10M14 4L4 14" />
+    </svg>
+  );
+}
+
+export default function Sidebar({
+  isOpen,
+  onClose,
+}: {
+  isOpen?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">Dashboard</div>
+    <aside className={`sidebar${isOpen ? " sidebar--open" : ""}`}>
+      <div className="sidebar-logo">
+        <span>Dashboard</span>
+        <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
+          <XIcon />
+        </button>
+      </div>
 
       <nav className="sidebar-nav">
         {groups.map((group) => (
