@@ -136,8 +136,12 @@ function itemAppliesToDate(item: RecurringItem, dateStr: string): boolean {
     case "yearly":    return (date.getMonth() + 1) === item.schedule.month && date.getDate() === item.schedule.day;
     case "quarterly": {
       const anchor = new Date(item.schedule.anchorDate + "T00:00:00");
-      const diff   = Math.round((date.getTime() - anchor.getTime()) / 86400000);
-      return diff >= 0 && diff % 91 === 0;
+      if (date < anchor) return false;
+      // Check if date falls on same day-of-month as anchor, 3/6/9/12... months later
+      const monthsDiff =
+        (date.getFullYear() - anchor.getFullYear()) * 12 +
+        (date.getMonth() - anchor.getMonth());
+      return monthsDiff >= 0 && monthsDiff % 3 === 0 && date.getDate() === anchor.getDate();
     }
     case "once": return dateStr === item.schedule.date;
   }

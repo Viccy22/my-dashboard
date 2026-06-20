@@ -132,7 +132,6 @@ function ContactForm({
 }
 
 export default function ContactsPage() {
-  const [rawData,   setRawData]   = useState<DashData>({});
   const [contacts,  setContacts]  = useState<Contact[]>([]);
   const [status,    setStatus]    = useState<SaveStatus>("idle");
   const [loading,   setLoading]   = useState(true);
@@ -142,7 +141,8 @@ export default function ContactsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search,    setSearch]    = useState("");
   const [filterTag, setFilterTag] = useState<Tag | "">("");
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timer      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rawDataRef = useRef<DashData>({});
   const today = todayMMDD();
 
   useEffect(() => {
@@ -150,7 +150,7 @@ export default function ContactsPage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setRawData(d);
+        rawDataRef.current = d;
         setContacts(d.contacts?.contacts ?? []);
       })
       .catch(() => setStatus("error"))
@@ -160,13 +160,13 @@ export default function ContactsPage() {
   const persist = useCallback((updated: Contact[]) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawData, contacts: { contacts: updated } };
-    setRawData(newData);
+    const newData = { ...rawDataRef.current, contacts: { contacts: updated } };
+    rawDataRef.current = newData;
     fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) })
       .then(r => { if (!r.ok) throw new Error(); setStatus("saved"); })
       .catch(() => setStatus("error"))
       .finally(() => { timer.current = setTimeout(() => setStatus("idle"), 2000); });
-  }, [rawData]);
+  }, []);
 
   const addContact = (form: Omit<Contact, "id">) => {
     const c: Contact = { ...form, id: crypto.randomUUID() };
