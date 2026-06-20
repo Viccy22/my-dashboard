@@ -50,7 +50,7 @@ const XIcon = () => (
 );
 
 export default function TodosPage() {
-  const [data,    setData]    = useState<DashData>({});
+  const rawDataRef = useRef<DashData>({});
   const [todos,   setTodos]   = useState<Todo[]>([]);
   const [maint,   setMaint]   = useState<MaintenanceData>({ tasks: [], completions: [] });
   const [billItems, setBillItems] = useState<RecurringItem[]>([]);
@@ -69,7 +69,7 @@ export default function TodosPage() {
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(res => {
         const d: DashData = res.data ?? {};
-        setData(d);
+        rawDataRef.current = d;
         setTodos(d.todos ?? []);
         setBillItems((d.finances?.items ?? []).filter((it: RecurringItem) => it.active && it.amount < 0));
         const saved = d.maintenance;
@@ -86,34 +86,34 @@ export default function TodosPage() {
   const save = useCallback(async (newData: DashData) => {
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
-    setData(newData);
+    rawDataRef.current = newData;
     try {
       const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
       if (!res.ok) throw new Error();
       setStatus("saved");
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const addTodo = () => {
     const text = newText.trim(); if (!text) return;
     const todo: Todo = { id: crypto.randomUUID(), text, done: false, dueDate: newDueDate || undefined, priority: newPriority || undefined };
     const updated = [...todos, todo];
     setTodos(updated); setNewText(""); setNewDueDate(""); setNewPriority(""); setShowForm(false);
-    save({ ...data, todos: updated });
+    save({ ...rawDataRef.current, todos: updated });
   };
   const toggleTodo = (id: string) => {
     const updated = todos.map(t => t.id === id ? { ...t, done: !t.done } : t);
-    setTodos(updated); save({ ...data, todos: updated });
+    setTodos(updated); save({ ...rawDataRef.current, todos: updated });
   };
   const deleteTodo = (id: string) => {
     const updated = todos.filter(t => t.id !== id);
-    setTodos(updated); save({ ...data, todos: updated });
+    setTodos(updated); save({ ...rawDataRef.current, todos: updated });
   };
 
   const toggleMaint = (taskId: string) => {
     const updated = { ...maint, completions: toggleCompletion(maint.completions, taskId, today) };
-    setMaint(updated); save({ ...data, maintenance: updated });
+    setMaint(updated); save({ ...rawDataRef.current, maintenance: updated });
   };
 
   if (loading) return <p className="empty" style={{ padding: "32px 0" }}>Loading…</p>;
