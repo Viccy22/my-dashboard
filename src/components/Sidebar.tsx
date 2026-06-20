@@ -25,14 +25,6 @@ function LayoutIcon() {
     </svg>
   );
 }
-function CheckIcon() {
-  return (
-    <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <rect x="1.5" y="1.5" width="13" height="13" rx="2" />
-      <path d="M4.5 8l2.5 2.5L11.5 5.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 function CalIcon() {
   return (
     <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
