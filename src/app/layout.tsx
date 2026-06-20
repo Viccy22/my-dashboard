@@ -1,49 +1,42 @@
-import type { Metadata } from "next";
-import { Cinzel, Crimson_Text } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import Banner from "@/components/Banner";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import CommandBar from "@/components/CommandBar";
+import MobileNav from "@/components/MobileNav";
 
-const cinzel = Cinzel({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-cinzel",
-  weight: ["400", "700"],
-  display: "swap",
-});
-
-const crimsonText = Crimson_Text({
-  subsets: ["latin"],
-  weight: ["400", "600"],
-  style: ["normal", "italic"],
-  variable: "--font-crimson",
+  variable: "--font-inter",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "My Dashboard",
-  description: "Your personal life dashboard",
+  title: "Dashboard",
+  description: "Personal life dashboard",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${cinzel.variable} ${crimsonText.variable}`}>
-      <body className="antialiased flex flex-col h-screen overflow-hidden">
-        <Banner />
-        {/* Below banner: sidebar + content side by side */}
-        <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+    <html lang="en" className={inter.variable}>
+      <body className="antialiased">
+        <div className="layout-root">
           <Sidebar />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
+          <div className="main-area">
             <Header />
-            <main style={{ flex: 1, overflowY: "auto", padding: "32px" }}>
-              {children}
-            </main>
+            <main className="page">{children}</main>
           </div>
         </div>
+        <CommandBar />
+        <MobileNav />
       </body>
     </html>
   );
