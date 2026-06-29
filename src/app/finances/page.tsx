@@ -18,8 +18,10 @@ type RecurringItem = {
   amount: number;
   schedule: Schedule;
   category: string;
+  startDate?: string;
   endDate?: string;
   active: boolean;
+  isTransfer?: boolean;
 };
 
 type Transaction = {
@@ -73,6 +75,7 @@ type CashFlowRow = {
   isLow: boolean;
   isToday: boolean;
   isPast: boolean;
+  isTransfer: boolean;
   source: RowSource;
 };
 
@@ -89,22 +92,25 @@ const SEED_DEBTS: DebtAccount[] = [
 ];
 
 const DEFAULT_ITEMS: RecurringItem[] = [
-  { id:"s0",  name:"Bi-weekly paycheck",            amount:+1400,   schedule:{ type:"biweekly", anchorDate:"2026-06-25" }, category:"Income",       active:true },
-  { id:"s1",  name:"Car payment",                   amount:-460.11, schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true, endDate:"2026-11-25" },
-  { id:"s2",  name:"Car insurance",                 amount:-255,    schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true },
-  { id:"s3",  name:"OUC utility bill",              amount:-200,    schedule:{ type:"monthly",  dayOfMonth:14 }, category:"Household",   active:true },
-  { id:"s4",  name:"Zorro's diet food",             amount:-120,    schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Pets",        active:true },
-  { id:"s5",  name:"Groceries",                     amount:-50,     schedule:{ type:"weekly",   dayOfWeek:6   }, category:"Groceries",   active:true },
-  { id:"s6",  name:"Gas",                           amount:-40,     schedule:{ type:"monthly",  dayOfMonth:15 }, category:"Transport",   active:true },
-  { id:"s7",  name:"Ally CC (min)",                 amount:-224,    schedule:{ type:"monthly",  dayOfMonth:5  }, category:"Credit Card", active:true },
-  { id:"s8",  name:"Capital One Savor (min)",       amount:-110,    schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true },
-  { id:"s9",  name:"Capital One Platinum (min)",    amount:-25,     schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true },
-  { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,     schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true },
-  { id:"s11", name:"Affirm Plan 2",                 amount:-28.55,  schedule:{ type:"monthly",  dayOfMonth:2  }, category:"BNPL",        active:true, endDate:"2027-03-02" },
-  { id:"s12", name:"Affirm Plan 3",                 amount:-53.81,  schedule:{ type:"monthly",  dayOfMonth:25 }, category:"BNPL",        active:true, endDate:"2027-04-25" },
-  { id:"s13", name:"Disney Annual Pass",            amount:-67,     schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Subscriptions",active:true },
-  { id:"s14", name:"Fitness membership",            amount:-40,     schedule:{ type:"monthly",  dayOfMonth:22 }, category:"Subscriptions",active:true },
-  { id:"s15", name:"Extra debt payment",            amount:-100,    schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true },
+  { id:"s0",  name:"Bi-weekly paycheck",            amount:+1540,    schedule:{ type:"biweekly", anchorDate:"2026-07-01" }, category:"Income",       active:true, endDate:"2026-08-26" },
+  { id:"s0b", name:"Bi-weekly paycheck",            amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",       active:true },
+  { id:"s1",  name:"Car payment",                   amount:-460.11,  schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true, endDate:"2026-11-25" },
+  { id:"s2",  name:"Car insurance",                 amount:-255,     schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true },
+  { id:"s3",  name:"OUC utility bill",              amount:-200,     schedule:{ type:"monthly",  dayOfMonth:14 }, category:"Household",   active:true },
+  { id:"s4",  name:"Zorro's diet food",             amount:-120,     schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Pets",        active:true },
+  { id:"s5",  name:"Groceries",                     amount:-50,      schedule:{ type:"weekly",   dayOfWeek:6   }, category:"Groceries",   active:true },
+  { id:"s6",  name:"Gas",                           amount:-40,      schedule:{ type:"monthly",  dayOfMonth:15 }, category:"Transport",   active:true },
+  { id:"s7",  name:"Ally CC (min)",                 amount:-224,     schedule:{ type:"monthly",  dayOfMonth:5  }, category:"Credit Card", active:true, endDate:"2026-08-31" },
+  { id:"s8",  name:"Capital One Savor (min)",       amount:-110,     schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-08-31" },
+  { id:"s9",  name:"Capital One Platinum (min)",    amount:-25,      schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-08-31" },
+  { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,      schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true, endDate:"2026-08-31" },
+  { id:"s11", name:"Affirm Plan 2",                 amount:-28.55,   schedule:{ type:"monthly",  dayOfMonth:2  }, category:"BNPL",        active:true, endDate:"2027-03-02" },
+  { id:"s12", name:"Affirm Plan 3",                 amount:-53.81,   schedule:{ type:"monthly",  dayOfMonth:25 }, category:"BNPL",        active:true, endDate:"2027-04-25" },
+  { id:"s13", name:"Disney Annual Pass",            amount:-67,      schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Subscriptions",active:true },
+  { id:"s14", name:"Fitness membership",            amount:-40,      schedule:{ type:"monthly",  dayOfMonth:22 }, category:"Subscriptions",active:true },
+  { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-08-31" },
+  { id:"s_sinking", name:"Sinking funds → HYSA",  amount:-512, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2026-09-01", isTransfer:true },
+  { id:"s_nelnet",  name:"Student loan → Nelnet", amount:-281, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-01-01", isTransfer:true },
 ];
 
 function seedFinances(): FinancesData {
@@ -124,6 +130,7 @@ function addDays(dateStr: string, n: number): string {
 function itemAppliesToDate(item: RecurringItem, dateStr: string): boolean {
   if (!item.active) return false;
   if (item.endDate && dateStr > item.endDate) return false;
+  if (item.startDate && dateStr < item.startDate) return false;
   const date = new Date(dateStr + "T00:00:00");
   switch (item.schedule.type) {
     case "monthly":  return date.getDate() === item.schedule.dayOfMonth;
@@ -166,27 +173,27 @@ function generateCashFlow(
     const isToday = dateStr === today;
     const isPast  = dateStr < today;
 
-    const hits: Array<{ description: string; amount: number; source: RowSource }> = [];
+    const hits: Array<{ description: string; amount: number; source: RowSource; isTransfer: boolean }> = [];
 
     // Recurring items — income first, then expenses
     const dayItems = items.filter(it => itemAppliesToDate(it, dateStr));
     dayItems.sort((a, b) => b.amount - a.amount);
     for (const it of dayItems) {
       const ov = overrides.find(o => o.itemId === it.id && o.date === dateStr);
-      hits.push({ description: it.name, amount: ov ? ov.amount : it.amount, source: { type: "recurring", itemId: it.id } });
+      hits.push({ description: it.name, amount: ov ? ov.amount : it.amount, source: { type: "recurring", itemId: it.id }, isTransfer: !!it.isTransfer });
     }
 
     // Logged transactions
     for (const t of transactions.filter(t => t.date === dateStr)) {
-      hits.push({ description: t.description, amount: t.amount, source: { type: "transaction", txnId: t.id } });
+      hits.push({ description: t.description, amount: t.amount, source: { type: "transaction", txnId: t.id }, isTransfer: false });
     }
 
     if (hits.length === 0) {
-      rows.push({ date: dateStr, dayName, description: "—", amount: null, balance, isPayday: false, isLow: balance < 300, isToday, isPast, source: { type: "empty" } });
+      rows.push({ date: dateStr, dayName, description: "—", amount: null, balance, isPayday: false, isLow: balance < 300, isToday, isPast, source: { type: "empty" }, isTransfer: false });
     } else {
       for (const hit of hits) {
         balance += hit.amount;
-        rows.push({ date: dateStr, dayName, description: hit.description, amount: hit.amount, balance, isPayday: hit.amount > 0, isLow: balance < 300, isToday, isPast, source: hit.source });
+        rows.push({ date: dateStr, dayName, description: hit.description, amount: hit.amount, balance, isPayday: hit.amount > 0 && !hit.isTransfer, isLow: balance < 300, isToday, isPast, source: hit.source, isTransfer: hit.isTransfer });
       }
     }
   }
@@ -323,12 +330,60 @@ export default function FinancesPage() {
         if (!f.overrides) f.overrides = [];
         // Auto-add Care Credit bill if missing
         if (!f.items.some(it => it.name.toLowerCase().includes("care credit"))) {
-          f.items = [...f.items, { id: "carecredit_min", name: "Care Credit (min)", amount: -97, schedule: { type: "monthly", dayOfMonth: 19 }, category: "Credit Card", active: true }];
+          f.items = [...f.items, { id: "carecredit_min", name: "Care Credit (min)", amount: -97, schedule: { type: "monthly", dayOfMonth: 19 }, category: "Credit Card", active: true, endDate: "2026-08-31" }];
         }
+
+        // ── Migrations ────────────────────────────────────────────────────────
+        let migrated = false;
+
+        // Fix paycheck anchor June 25 → July 1 and amount $1,400 → $1,540
+        const s0Item = f.items.find(it => it.id === "s0");
+        if (s0Item?.schedule.type === "biweekly" && (s0Item.schedule as { anchorDate: string }).anchorDate === "2026-06-25") {
+          f.items = f.items.map(it => it.id === "s0" ? { ...it,
+            amount: it.amount === 1400 ? 1540 : it.amount,
+            endDate: it.endDate ?? "2026-08-26",
+            schedule: { type: "biweekly" as const, anchorDate: "2026-07-01" },
+          } : it);
+          migrated = true;
+        }
+
+        // Add post-Sept paycheck ($1,368.15, 401k loan repayment baked in)
+        if (!f.items.some(it => it.id === "s0b")) {
+          f.items = [...f.items, { id: "s0b", name: "Bi-weekly paycheck", amount: 1368.15, schedule: { type: "biweekly" as const, anchorDate: "2026-09-09" }, category: "Income", active: true }];
+          migrated = true;
+        }
+
+        // Add endDate to CC/extra-debt items (paid off via 401k loan Sept 2026)
+        const ccEndDate = "2026-08-31";
+        const ccIds = ["s7", "s8", "s9", "s10", "s15", "carecredit_min"];
+        f.items = f.items.map(it => {
+          if (ccIds.includes(it.id) && !it.endDate) { migrated = true; return { ...it, endDate: ccEndDate }; }
+          return it;
+        });
+
+        // Add sinking funds transfer ($512/mo, starts Sept 1 2026)
+        if (!f.items.some(it => it.id === "s_sinking")) {
+          f.items = [...f.items, { id: "s_sinking", name: "Sinking funds → HYSA", amount: -512, schedule: { type: "monthly" as const, dayOfMonth: 1 }, category: "Transfer", active: true, startDate: "2026-09-01", isTransfer: true }];
+          migrated = true;
+        }
+
+        // Add student loan payment to Nelnet ($281/mo, starts Jan 1 2027)
+        if (!f.items.some(it => it.id === "s_nelnet")) {
+          f.items = [...f.items, { id: "s_nelnet", name: "Student loan → Nelnet", amount: -281, schedule: { type: "monthly" as const, dayOfMonth: 1 }, category: "Transfer", active: true, startDate: "2027-01-01", isTransfer: true }];
+          migrated = true;
+        }
+
         setFinances(f);
         // Savings & debt
         setSavings(f.savings ?? { totalBalance: null, buckets: [] });
         setDebtAccounts(f.debt?.accounts ?? SEED_DEBTS);
+
+        // Auto-save after migrations so they persist
+        if (migrated) {
+          const newData = { ...d, finances: f };
+          rawDataRef.current = newData;
+          fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) }).catch(() => {});
+        }
       })
       .catch(() => setStatus("error"))
       .finally(() => setLoading(false));
@@ -512,6 +567,18 @@ export default function FinancesPage() {
     return future.reduce((min, r) => r.balance < min.balance ? r : min, future[0]);
   }, [allRows]);
 
+  const upcomingMoves = useMemo(() => {
+    const today = todayStr();
+    const moves: Array<{ date: string; name: string; amount: number }> = [];
+    for (let i = 0; i <= 7; i++) {
+      const d = addDays(today, i);
+      for (const it of finances.items.filter(it => it.isTransfer && it.active)) {
+        if (itemAppliesToDate(it, d)) moves.push({ date: d, name: it.name, amount: it.amount });
+      }
+    }
+    return moves;
+  }, [finances.items]);
+
   if (loading) return <p className="empty" style={{ padding: "32px 0" }}>Loading…</p>;
 
   const hasBalance = finances.currentBalance != null;
@@ -576,6 +643,16 @@ export default function FinancesPage() {
               {nextPayday && <div style={{ fontSize: "12.5px", color: "var(--green)" }}>Next payday: <strong>{fmtDate(nextPayday.date)}</strong> (+{fmt$(nextPayday.amount!)})</div>}
               {lowestPoint && <div style={{ fontSize: "12.5px", color: lowestPoint.balance < 300 ? "var(--red)" : "var(--text-3)" }}>Lowest point: <strong>{fmtDate(lowestPoint.date)}</strong> ({fmt$(lowestPoint.balance)})</div>}
               {lowDays.length > 0 && <div style={{ fontSize: "12px", color: "var(--red)" }}>⚠ {lowDays.length} days below $300 in next year</div>}
+              {upcomingMoves.length > 0 && (
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: "8px", marginTop: "4px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Money moves due</p>
+                  {upcomingMoves.map((m, i) => (
+                    <div key={i} style={{ fontSize: "12px", color: "var(--accent-text)" }}>
+                      → {m.name}: <strong>{fmt$(-m.amount)}</strong> by {fmtDate(m.date)}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -687,15 +764,15 @@ export default function FinancesPage() {
                   gap: "0 6px",
                   padding: "5px 8px",
                   borderRadius: "4px",
-                  background: row.isToday ? "var(--accent-dim)" : row.isPayday ? "var(--green-dim)" : "transparent",
+                  background: row.isToday ? "var(--accent-dim)" : row.isPayday ? "var(--green-dim)" : row.isTransfer ? "rgba(129,140,248,0.04)" : "transparent",
                   opacity: row.isPast ? 0.45 : 1,
                 }}>
                   <span style={{ fontSize: "12.5px", color: row.isToday ? "var(--accent-text)" : "var(--text-3)", fontWeight: row.isToday ? 600 : 400 }}>
                     {fmtDate(row.date)}{row.isToday ? " ←" : ""}
                   </span>
                   <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{row.dayName}</span>
-                  <span style={{ fontSize: "13px", color: row.isPayday ? "var(--green)" : row.description === "—" ? "var(--text-3)" : "var(--text)", fontWeight: row.isPayday ? 500 : 400 }}>
-                    {row.description}
+                  <span style={{ fontSize: "13px", color: row.isPayday ? "var(--green)" : row.isTransfer ? "var(--accent-text)" : row.description === "—" ? "var(--text-3)" : "var(--text)", fontWeight: row.isPayday || row.isTransfer ? 500 : 400 }}>
+                    {row.isTransfer ? "→ " : ""}{row.description}
                     {hasOverride && <span style={{ fontSize: "10px", color: "var(--accent-text)", marginLeft: "6px", fontWeight: 600 }}>edited</span>}
                   </span>
 
@@ -709,7 +786,7 @@ export default function FinancesPage() {
                       />
                     ) : (
                       <span style={{ fontSize: "13px", fontVariantNumeric: "tabular-nums",
-                        color: row.amount == null ? "transparent" : row.amount > 0 ? "var(--green)" : "var(--red)",
+                        color: row.amount == null ? "transparent" : row.isTransfer ? "var(--accent)" : row.amount > 0 ? "var(--green)" : "var(--red)",
                         fontWeight: 500 }}>
                         {row.amount != null ? fmt$(row.amount) : ""}
                       </span>
@@ -1115,7 +1192,7 @@ export default function FinancesPage() {
                   </div>
                   <select className="input" style={{ flex: "1 1 110px" }} value={newBill.category}
                     onChange={e => setNewBill(b => ({ ...b, category: e.target.value }))}>
-                    {["Income","Transport","Household","Pets","Groceries","Credit Card","BNPL","Subscriptions","Debt","Other"].map(c => <option key={c} value={c}>{c}</option>)}
+                    {["Income","Transport","Household","Pets","Groceries","Credit Card","BNPL","Subscriptions","Debt","Transfer","Other"].map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
@@ -1192,7 +1269,7 @@ export default function FinancesPage() {
             <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "12px" }}>
               Pencil = change all future amounts. To edit just one occurrence, use the pencil in the cash flow table above.
             </p>
-            {["Income","Transport","Household","Pets","Groceries","Credit Card","BNPL","Subscriptions","Debt","Other"].map(cat => {
+            {["Income","Transport","Household","Pets","Groceries","Credit Card","BNPL","Subscriptions","Debt","Transfer","Other"].map(cat => {
               const catItems = finances.items.filter(it => it.category === cat && !it.id.startsWith("sub_"));
               if (!catItems.length) return null;
               return (
