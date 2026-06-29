@@ -649,6 +649,7 @@ export default function MoneyPlanPage() {
                           {g.paused ? <span style={{ fontSize: "11px" }}>▶</span> : <span style={{ fontSize: "11px" }}>⏸</span>}
                         </button>}
                         {!g.done && <button className="btn-icon" title="Mark done" onClick={() => update(p => ({ ...p, goals: p.goals.map(x => x.id === g.id ? { ...x, done: true, current: x.target } : x) }))}><CheckIcon /></button>}
+                        {g.done && <button className="btn-icon" title="Reopen goal" style={{ fontSize: "11px", color: "var(--text-3)" }} onClick={() => update(p => ({ ...p, goals: p.goals.map(x => x.id === g.id ? { ...x, done: false } : x) }))}>↩</button>}
                         <button className="btn-icon" title="Delete" onClick={() => { if (confirm(`Delete goal "${g.name}"?`)) update(p => ({ ...p, goals: p.goals.filter(x => x.id !== g.id) })); }}><XIcon /></button>
                       </div>
                     </div>
