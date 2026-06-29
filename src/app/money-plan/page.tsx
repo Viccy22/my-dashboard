@@ -61,6 +61,15 @@ const DEFAULT_GOALS: Goal[] = [
   { id: "home_projects", name: "Extra Loan / Home Projects", target: 5000, current: 0, done: false, paused: false, notes: "Fridge, washer/dryer, fans, flooring. Update target as needed." },
 ];
 
+const DEFAULT_DEBTS: DebtAccount[] = [
+  { id: "dbt1", name: "Capital One Platinum",    balance: 687.65,   apr: 28.99, type: "credit_card" },
+  { id: "dbt2", name: "Capital One Venture",     balance: 2059.45,  apr: 28.49, type: "credit_card" },
+  { id: "dbt3", name: "Capital One Savor",       balance: 2889.35,  apr: 28.24, type: "credit_card" },
+  { id: "dbt4", name: "Capital One Quicksilver", balance: 989.41,   apr: 26.49, type: "credit_card" },
+  { id: "dbt5", name: "Ollo",                    balance: 6027.98,  apr: 27.99, type: "credit_card" },
+  { id: "dbt6", name: "Care Credit",             balance: 2269.59,  apr: 33,    type: "credit_card" },
+];
+
 const DEFAULT_SINKING: SinkingBucket[] = [
   { id: "bonnaroo",     name: "Bonnaroo (supplies + boarding)", annual: 1700, current: 0, eventDate: "2027-06-01", paused: false },
   { id: "okeechobee",   name: "Okeechobee (supplies + boarding)", annual: 1150, current: 0, eventDate: "2027-03-01", paused: false },
@@ -289,7 +298,7 @@ function ProgressBar({ current, target, color = "var(--accent)" }: { current: nu
 export default function MoneyPlanPage() {
   const rawRef = useRef<DashData>({});
   const [plan, setPlan] = useState<MoneyPlanData>(seedPlan());
-  const [debtAccounts, setDebtAccounts] = useState<DebtAccount[]>([]);
+  const [debtAccounts, setDebtAccounts] = useState<DebtAccount[]>(DEFAULT_DEBTS);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const statusTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -299,9 +308,14 @@ export default function MoneyPlanPage() {
   useEffect(() => {
     fetch("/api/data").then(r => r.json()).then(({ data }) => {
       rawRef.current = data ?? {};
-      // Load CC balances from shared finances data
-      const accounts = (data?.finances?.debt?.accounts ?? []) as DebtAccount[];
-      if (accounts.length) setDebtAccounts(accounts);
+      // Load CC balances — merge DB data over defaults so saved balances win
+      const dbAccounts = (data?.finances?.debt?.accounts ?? []) as DebtAccount[];
+      if (dbAccounts.length) {
+        setDebtAccounts(DEFAULT_DEBTS.map(d => {
+          const found = dbAccounts.find(a => a.id === d.id);
+          return found ? { ...d, balance: found.balance } : d;
+        }));
+      }
       const saved = data?.moneyPlan as MoneyPlanData | undefined;
       if (saved) {
         // Migrate: ensure new fields exist
