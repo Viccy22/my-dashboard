@@ -547,6 +547,22 @@ export default function MoneyPlanPage() {
     return sweepBalance(plan.settings.buffer + n, plan.settings, plan.goals, plan.contributions, today, debtAccounts, billsTotal);
   }, [foundMoneyInput, plan.settings, plan.goals, plan.contributions, today, debtAccounts, billsTotal]);
 
+  // ── Future money planner ───────────────────────────────────────────────────
+
+  const [planDate, setPlanDate] = useState("");
+  const [planAmount, setPlanAmount] = useState("");
+  const futurePlanLines = useMemo(() => {
+    const n = parseFloat(planAmount);
+    if (isNaN(n) || n <= 0 || !planDate) return null;
+    // Bills remaining in the month of that future date
+    const d = new Date(planDate + "T00:00:00");
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    const monthEnd = lastDay.toISOString().slice(0, 10);
+    const futureBills = billsBetween(financeItems, planDate, monthEnd);
+    const futureReserved = futureBills.reduce((s, b) => s + b.amount, 0);
+    return { lines: sweepBalance(n, plan.settings, plan.goals, plan.contributions, planDate, debtAccounts, futureReserved), bills: futureBills, reserved: futureReserved };
+  }, [planDate, planAmount, plan.settings, plan.goals, plan.contributions, debtAccounts, financeItems]);
+
   // ── Student loan deferment ─────────────────────────────────────────────────
 
   const deferEndDate = "2028-11-27";
@@ -896,6 +912,57 @@ export default function MoneyPlanPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* FUTURE MONEY PLANNER */}
+          <div className="card">
+            <p className="card-title">Future Money Planner</p>
+            <p style={{ fontSize: "12.5px", color: "var(--text-3)", marginBottom: "12px" }}>Know a bonus, refund, or extra check is coming? Enter the date and amount to see exactly where it should go — bills for that month are automatically accounted for.</p>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "10px" }}>
+              <input type="date" className="input" style={{ width: "160px" }}
+                value={planDate} onChange={e => setPlanDate(e.target.value)} />
+              <div style={{ display: "flex", alignItems: "center", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 12px" }}>
+                <span style={{ color: "var(--text-3)", marginRight: "4px" }}>$</span>
+                <input type="number" step="0.01" placeholder="Amount"
+                  style={{ background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: "14px", width: "120px", fontFamily: "inherit" }}
+                  value={planAmount} onChange={e => setPlanAmount(e.target.value)} />
+              </div>
+              {(planDate || planAmount) && <button className="btn btn-ghost" style={{ fontSize: "12px" }} onClick={() => { setPlanDate(""); setPlanAmount(""); }}>Clear</button>}
+            </div>
+
+            {futurePlanLines && (() => {
+              const { lines, bills, reserved } = futurePlanLines;
+              return (
+                <div>
+                  {/* Bills that month */}
+                  {bills.length > 0 && (
+                    <div style={{ marginBottom: "12px", background: "var(--surface-raised)", borderRadius: "6px", padding: "10px 12px" }}>
+                      <p style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-3)", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        Bills that month — {fmt$(reserved)} reserved
+                      </p>
+                      {bills.map((b, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-2)", padding: "1px 0" }}>
+                          <span>{new Date(b.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {b.name}</span>
+                          <span style={{ color: "var(--red)" }}>−{fmt$(b.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Where the money goes */}
+                  <p style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-3)", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Where it goes</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {lines.map((l, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", borderRadius: "5px", background: l.type === "buffer" ? "var(--surface-raised)" : l.type === "goal" ? "var(--green-dim)" : l.type === "extra" ? "var(--accent-dim)" : "rgba(129,140,248,0.06)" }}>
+                        <span style={{ fontSize: "13px", color: l.type === "buffer" ? "var(--text-3)" : l.type === "goal" ? "var(--green)" : l.type === "extra" ? "var(--accent-text)" : "var(--accent-text)" }}>
+                          {l.type === "buffer" ? "" : "→ "}{l.name}
+                        </span>
+                        <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", color: l.type === "buffer" ? "var(--text-3)" : l.type === "goal" ? "var(--green)" : "var(--accent)" }}>{fmt$(l.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
         </div>
