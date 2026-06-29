@@ -116,10 +116,14 @@ const DEFAULT_ITEMS: RecurringItem[] = [
 
 // Sept 2026 plan items — always injected at render time regardless of stored data
 const PLAN_ITEMS: RecurringItem[] = [
-  { id:"s0b",       name:"Bi-weekly paycheck",    amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",   active:true },
-  { id:"s_sinking", name:"Sinking funds → HYSA", amount:-512,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2026-09-01", isTransfer:true },
-  { id:"s_nelnet",  name:"Student loan → Nelnet", amount:-281,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2027-01-01", isTransfer:true },
-  { id:"s_hsa",     name:"HSA contribution",       amount:-200,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2027-07-01", isTransfer:true },
+  { id:"s0b",          name:"Bi-weekly paycheck",       amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",   active:true },
+  { id:"s_sinking",    name:"Sinking funds → HYSA",    amount:-512,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2026-09-01", isTransfer:true },
+  { id:"s_ef_starter", name:"→ Starter EF ($3k goal)", amount:-400,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2026-09-01", endDate:"2026-11-30", isTransfer:true },
+  { id:"s_wh_fund",    name:"→ Water heater ($1.8k)",  amount:-600,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2026-12-01", endDate:"2027-02-28", isTransfer:true },
+  { id:"s_nelnet",     name:"Student loan → Nelnet",   amount:-281,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2027-01-01", isTransfer:true },
+  { id:"s_ac_cushion", name:"→ AC cushion ($4k goal)", amount:-500,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2027-03-01", endDate:"2027-11-30", isTransfer:true },
+  { id:"s_hsa",        name:"HSA contribution",         amount:-200,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2027-07-01", isTransfer:true },
+  { id:"s_core_ef",    name:"→ Core EF ($5.6k goal)",  amount:-600,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2027-12-01", isTransfer:true },
 ];
 
 function seedFinances(): FinancesData {
@@ -558,12 +562,16 @@ export default function FinancesPage() {
   // ── Effective items — always include plan items + fix CC end dates ────────
   const effectiveItems = useMemo(() => {
     let items = finances.items.map(it => {
-      // Fix old paycheck anchor date on the fly (in case migration didn't persist)
-      if (it.id === "s0" && it.schedule.type === "biweekly" &&
-          (it.schedule as { anchorDate: string }).anchorDate === "2026-06-25") {
-        return { ...it, amount: it.amount === 1400 ? 1540 : it.amount,
-          endDate: it.endDate ?? "2026-08-26",
-          schedule: { type: "biweekly" as const, anchorDate: "2026-07-01" } };
+      // Always cap s0 (pre-Sept paycheck) at Aug 26 so it never overlaps s0b
+      if (it.id === "s0") {
+        const sched = it.schedule as { anchorDate?: string };
+        const fixes: Partial<RecurringItem> = {};
+        if (it.schedule.type === "biweekly" && sched.anchorDate === "2026-06-25") {
+          fixes.amount = it.amount === 1400 ? 1540 : it.amount;
+          fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-07-01" };
+        }
+        if (!it.endDate || it.endDate > "2026-08-26") fixes.endDate = "2026-08-26";
+        return Object.keys(fixes).length ? { ...it, ...fixes } : it;
       }
       // Cap all Credit Card items at Aug 31 2026 (paid off via 401k loan)
       if (it.category === "Credit Card" && (!it.endDate || it.endDate > "2026-08-31")) {
