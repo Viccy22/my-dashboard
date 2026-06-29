@@ -428,16 +428,29 @@ export default function MoneyPlanPage() {
   const upcomingPaydays = useMemo(() => nextPaydays(plan.settings.paydayAnchor, today, 6), [plan.settings.paydayAnchor, today]);
   const nextPayday = upcomingPaydays[0];
 
-  // Bills due between today (inclusive) and the day before next paycheck
+  // Show bills for the full current pay period (today → day before payday after next)
+  // so you always see a meaningful window even when payday is tomorrow.
+  // Reserve only what's due BEFORE next payday (exclusive) — after that, fresh income arrives.
   const upcomingBills = useMemo(() => {
-    if (!nextPayday) return [];
-    const dayBefore = new Date(nextPayday + "T00:00:00");
+    // Show through the day before the payday after next (2 paydays out)
+    const windowEnd = upcomingPaydays[1] ?? upcomingPaydays[0];
+    if (!windowEnd) return [];
+    const dayBefore = new Date(windowEnd + "T00:00:00");
     dayBefore.setDate(dayBefore.getDate() - 1);
     const toDate = dayBefore.toISOString().slice(0, 10);
     return billsBetween(financeItems, today, toDate);
+  }, [financeItems, today, upcomingPaydays]);
+
+  // Only reserve bills that hit BEFORE the next paycheck (exclusive)
+  const billsReserved = useMemo(() => {
+    if (!nextPayday) return 0;
+    const dayBefore = new Date(nextPayday + "T00:00:00");
+    dayBefore.setDate(dayBefore.getDate() - 1);
+    const toDate = dayBefore.toISOString().slice(0, 10);
+    return billsBetween(financeItems, today, toDate).reduce((s, b) => s + b.amount, 0);
   }, [financeItems, today, nextPayday]);
 
-  const billsTotal = useMemo(() => upcomingBills.reduce((s, b) => s + b.amount, 0), [upcomingBills]);
+  const billsTotal = billsReserved;
   const nextPaydayDays = daysUntil(nextPayday, today);
 
   const accelMonths = useMemo(() => threePaycheckMonths(plan.settings.paydayAnchor, today, 18), [plan.settings.paydayAnchor, today]);
@@ -698,23 +711,34 @@ export default function MoneyPlanPage() {
                 </div>
               </details>
             )}
-            {/* Upcoming bills warning */}
-            {upcomingBills.length > 0 && (
-              <div style={{ background: "var(--yellow-dim)", border: "1px solid var(--yellow)", borderRadius: "6px", padding: "10px 14px", marginBottom: "14px" }}>
-                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--yellow)", margin: "0 0 6px" }}>
-                  Bills before your next paycheck ({nextPayday}) — {fmt$(billsTotal)} reserved
-                </p>
+            {/* Upcoming bills — always show full pay period */}
+            <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "6px", padding: "10px 14px", marginBottom: "14px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)", margin: "0 0 6px" }}>
+                Upcoming bills
+                {billsReserved > 0 && <span style={{ color: "var(--yellow)", marginLeft: "8px" }}>{fmt$(billsReserved)} reserved before paycheck ({nextPayday})</span>}
+              </p>
+              {upcomingBills.length === 0 ? (
+                <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0 }}>No bills found — make sure Bills &amp; Budget has loaded at least once.</p>
+              ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                  {upcomingBills.map((b, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-2)" }}>
-                      <span>{new Date(b.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {b.name}</span>
-                      <span style={{ color: "var(--red)" }}>−{fmt$(b.amount)}</span>
-                    </div>
-                  ))}
+                  {upcomingBills.map((b, i) => {
+                    const beforePayday = nextPayday && b.date < nextPayday;
+                    return (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                        <span style={{ color: beforePayday ? "var(--text)" : "var(--text-3)" }}>
+                          {beforePayday && <span style={{ color: "var(--yellow)", marginRight: "4px" }}>⚠</span>}
+                          {new Date(b.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {b.name}
+                        </span>
+                        <span style={{ color: beforePayday ? "var(--red)" : "var(--text-3)" }}>−{fmt$(b.amount)}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <p style={{ fontSize: "11px", color: "var(--text-3)", margin: "6px 0 0" }}>These are automatically reserved before any goal dollars are moved.</p>
-              </div>
-            )}
+              )}
+              <p style={{ fontSize: "11px", color: "var(--text-3)", margin: "6px 0 0" }}>
+                ⚠ = before next paycheck and reserved in sweep. Dimmed = after paycheck arrives.
+              </p>
+            </div>
 
             <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 12px", flex: "0 0 160px" }}>
