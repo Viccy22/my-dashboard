@@ -16,6 +16,8 @@ type SinkingBucket = {
 
 type ContribYear = { year: number; hsa: number; roth: number };
 
+type DebtAccount = { id: string; name: string; balance: number; apr: number; type: string };
+
 type Settings = {
   buffer: number;
   sinkingMonthly: number; studentLoanMonthly: number; hsaMonthly: number;
@@ -155,7 +157,7 @@ type SweepLine = { name: string; amount: number; type: "buffer" | "layerA" | "go
 
 function sweepBalance(
   balance: number, settings: Settings, goals: Goal[],
-  contributions: ContribYear[], today: string,
+  contributions: ContribYear[], today: string, debtAccounts: DebtAccount[] = [],
 ): SweepLine[] {
   const isPivot = today >= settings.pivotDate;
   const surplus = balance - settings.buffer;
@@ -165,8 +167,17 @@ function sweepBalance(
   let rem = surplus;
 
   if (!isPivot) {
-    // Pre-pivot: send excess to highest-APR card
-    lines.push({ name: "Pay down CareCredit (33% APR — highest priority)", amount: rem, type: "layerA" });
+    // Pre-pivot: cascade through cards by APR descending, capped at each balance
+    const cards = [...debtAccounts]
+      .filter(d => d.type === "credit_card" && d.balance > 0)
+      .sort((a, b) => b.apr - a.apr);
+    for (const card of cards) {
+      if (rem <= 0) break;
+      const amt = Math.min(rem, card.balance);
+      lines.push({ name: `Pay down ${card.name} (${card.apr}% APR)`, amount: amt, type: "layerA" });
+      rem -= amt;
+    }
+    if (rem > 0) lines.push({ name: "All cards paid — move to HYSA savings cushion", amount: rem, type: "goal" });
     return lines;
   }
 
@@ -278,6 +289,7 @@ function ProgressBar({ current, target, color = "var(--accent)" }: { current: nu
 export default function MoneyPlanPage() {
   const rawRef = useRef<DashData>({});
   const [plan, setPlan] = useState<MoneyPlanData>(seedPlan());
+  const [debtAccounts, setDebtAccounts] = useState<DebtAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const statusTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -287,6 +299,9 @@ export default function MoneyPlanPage() {
   useEffect(() => {
     fetch("/api/data").then(r => r.json()).then(({ data }) => {
       rawRef.current = data ?? {};
+      // Load CC balances from shared finances data
+      const accounts = (data?.finances?.debt?.accounts ?? []) as DebtAccount[];
+      if (accounts.length) setDebtAccounts(accounts);
       const saved = data?.moneyPlan as MoneyPlanData | undefined;
       if (saved) {
         // Migrate: ensure new fields exist
@@ -402,8 +417,8 @@ export default function MoneyPlanPage() {
   const sweepLines = useMemo(() => {
     const n = parseFloat(sweepInput);
     if (isNaN(n) || n <= 0) return null;
-    return sweepBalance(n, plan.settings, plan.goals, plan.contributions, today);
-  }, [sweepInput, plan.settings, plan.goals, plan.contributions, today]);
+    return sweepBalance(n, plan.settings, plan.goals, plan.contributions, today, debtAccounts);
+  }, [sweepInput, plan.settings, plan.goals, plan.contributions, today, debtAccounts]);
 
   // ── Settings edit state ────────────────────────────────────────────────────
 
@@ -427,7 +442,7 @@ export default function MoneyPlanPage() {
   const foundMoneyLines = useMemo(() => {
     const n = parseFloat(foundMoneyInput);
     if (isNaN(n) || n <= 0) return null;
-    return sweepBalance(plan.settings.buffer + n, plan.settings, plan.goals, plan.contributions, today);
+    return sweepBalance(plan.settings.buffer + n, plan.settings, plan.goals, plan.contributions, today, debtAccounts);
   }, [foundMoneyInput, plan.settings, plan.goals, plan.contributions, today]);
 
   // ── Student loan deferment ─────────────────────────────────────────────────
