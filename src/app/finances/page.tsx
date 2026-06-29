@@ -114,6 +114,14 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s_hsa",     name:"HSA contribution",       amount:-200, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-07-01", isTransfer:true },
 ];
 
+// Sept 2026 plan items — always injected at render time regardless of stored data
+const PLAN_ITEMS: RecurringItem[] = [
+  { id:"s0b",       name:"Bi-weekly paycheck",    amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",   active:true },
+  { id:"s_sinking", name:"Sinking funds → HYSA", amount:-512,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2026-09-01", isTransfer:true },
+  { id:"s_nelnet",  name:"Student loan → Nelnet", amount:-281,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2027-01-01", isTransfer:true },
+  { id:"s_hsa",     name:"HSA contribution",       amount:-200,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2027-07-01", isTransfer:true },
+];
+
 function seedFinances(): FinancesData {
   return { currentBalance: null, items: DEFAULT_ITEMS, transactions: [], overrides: [] };
 }
@@ -547,11 +555,34 @@ export default function FinancesPage() {
     setFinances(updated); save(updated);
   };
 
+  // ── Effective items — always include plan items + fix CC end dates ────────
+  const effectiveItems = useMemo(() => {
+    let items = finances.items.map(it => {
+      // Fix old paycheck anchor date on the fly (in case migration didn't persist)
+      if (it.id === "s0" && it.schedule.type === "biweekly" &&
+          (it.schedule as { anchorDate: string }).anchorDate === "2026-06-25") {
+        return { ...it, amount: it.amount === 1400 ? 1540 : it.amount,
+          endDate: it.endDate ?? "2026-08-26",
+          schedule: { type: "biweekly" as const, anchorDate: "2026-07-01" } };
+      }
+      // Cap all Credit Card items at Aug 31 2026 (paid off via 401k loan)
+      if (it.category === "Credit Card" && (!it.endDate || it.endDate > "2026-08-31")) {
+        return { ...it, endDate: "2026-08-31" };
+      }
+      return it;
+    });
+    // Inject plan items that aren't already in stored data
+    for (const p of PLAN_ITEMS) {
+      if (!items.some(it => it.id === p.id)) items = [...items, p];
+    }
+    return items;
+  }, [finances.items]);
+
   // ── Cash flow ─────────────────────────────────────────────────────────────
   const allRows = useMemo(() => {
     if (finances.currentBalance == null) return [];
-    return generateCashFlow(finances.currentBalance, todayStr(), 365, finances.items, finances.transactions, finances.overrides);
-  }, [finances]);
+    return generateCashFlow(finances.currentBalance, todayStr(), 365, effectiveItems, finances.transactions, finances.overrides);
+  }, [finances, effectiveItems]);
 
   const displayRows = useMemo(() => {
     const today = todayStr();
@@ -579,12 +610,12 @@ export default function FinancesPage() {
     const moves: Array<{ date: string; name: string; amount: number }> = [];
     for (let i = 0; i <= 7; i++) {
       const d = addDays(today, i);
-      for (const it of finances.items.filter(it => it.isTransfer && it.active)) {
+      for (const it of effectiveItems.filter(it => it.isTransfer && it.active)) {
         if (itemAppliesToDate(it, d)) moves.push({ date: d, name: it.name, amount: it.amount });
       }
     }
     return moves;
-  }, [finances.items]);
+  }, [effectiveItems]);
 
   if (loading) return <p className="empty" style={{ padding: "32px 0" }}>Loading…</p>;
 
