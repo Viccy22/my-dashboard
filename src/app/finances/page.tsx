@@ -111,6 +111,7 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-08-31" },
   { id:"s_sinking", name:"Sinking funds → HYSA",  amount:-512, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2026-09-01", isTransfer:true },
   { id:"s_nelnet",  name:"Student loan → Nelnet", amount:-281, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-01-01", isTransfer:true },
+  { id:"s_hsa",     name:"HSA contribution",       amount:-200, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-07-01", isTransfer:true },
 ];
 
 function seedFinances(): FinancesData {
@@ -370,6 +371,12 @@ export default function FinancesPage() {
         // Add student loan payment to Nelnet ($281/mo, starts Jan 1 2027)
         if (!f.items.some(it => it.id === "s_nelnet")) {
           f.items = [...f.items, { id: "s_nelnet", name: "Student loan → Nelnet", amount: -281, schedule: { type: "monthly" as const, dayOfMonth: 1 }, category: "Transfer", active: true, startDate: "2027-01-01", isTransfer: true }];
+          migrated = true;
+        }
+
+        // Add HSA contribution ($200/mo, starts Jul 1 2027 — after Affirm plans end + AC cushion funded)
+        if (!f.items.some(it => it.id === "s_hsa")) {
+          f.items = [...f.items, { id: "s_hsa", name: "HSA contribution", amount: -200, schedule: { type: "monthly" as const, dayOfMonth: 1 }, category: "Transfer", active: true, startDate: "2027-07-01", isTransfer: true }];
           migrated = true;
         }
 
