@@ -93,7 +93,7 @@ const SEED_DEBTS: DebtAccount[] = [
 
 const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s0",  name:"Bi-weekly paycheck",            amount:+1540,    schedule:{ type:"biweekly", anchorDate:"2026-07-01" }, category:"Income",       active:true, endDate:"2026-08-26" },
-  { id:"s0b", name:"Bi-weekly paycheck",            amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",       active:true },
+  { id:"s0b", name:"Bi-weekly paycheck",            amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",       active:true, startDate:"2026-09-01" },
   { id:"s1",  name:"Car payment",                   amount:-460.11,  schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true, endDate:"2026-11-25" },
   { id:"s2",  name:"Car insurance",                 amount:-255,     schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true },
   { id:"s3",  name:"OUC utility bill",              amount:-200,     schedule:{ type:"monthly",  dayOfMonth:14 }, category:"Household",   active:true },
@@ -116,7 +116,7 @@ const DEFAULT_ITEMS: RecurringItem[] = [
 
 // Sept 2026 plan items — always injected at render time regardless of stored data
 const PLAN_ITEMS: RecurringItem[] = [
-  { id:"s0b",          name:"Bi-weekly paycheck",       amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",   active:true },
+  { id:"s0b",          name:"Bi-weekly paycheck",       amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",   active:true, startDate:"2026-09-01" },
   { id:"s_sinking",    name:"Sinking funds → HYSA",    amount:-512,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2026-09-01", isTransfer:true },
   { id:"s_ef_starter", name:"→ Starter EF ($3k goal)", amount:-400,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2026-09-01", endDate:"2026-11-30", isTransfer:true },
   { id:"s_wh_fund",    name:"→ Water heater ($1.8k)",  amount:-600,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2026-12-01", endDate:"2027-02-28", isTransfer:true },
@@ -571,6 +571,15 @@ export default function FinancesPage() {
           fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-07-01" };
         }
         if (!it.endDate || it.endDate > "2026-08-26") fixes.endDate = "2026-08-26";
+        return Object.keys(fixes).length ? { ...it, ...fixes } : it;
+      }
+      // Always ensure s0b doesn't fire before Sept (biweekly fires in both directions)
+      if (it.id === "s0b") {
+        const fixes: Partial<RecurringItem> = {};
+        if (!it.startDate || it.startDate > "2026-09-01") fixes.startDate = "2026-09-01";
+        const sched = it.schedule as { anchorDate?: string };
+        if (it.schedule.type !== "biweekly" || sched.anchorDate !== "2026-09-09")
+          fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-09-09" };
         return Object.keys(fixes).length ? { ...it, ...fixes } : it;
       }
       // Cap all Credit Card items at Aug 31 2026 (paid off via 401k loan)
