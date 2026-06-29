@@ -194,8 +194,9 @@ const groups: NavGroup[] = [
   {
     label: "Finances",
     items: [
-      { href: "/finances",      label: "Bills & Budget",  icon: <DollarIcon />, built: true },
-      { href: "/subscriptions", label: "Subscriptions",   icon: <ReceiptIcon />, built: true },
+      { href: "/finances",     label: "Bills & Budget",     icon: <DollarIcon />,  built: true },
+      { href: "/money-plan",   label: "Money Movement Plan", icon: <PlanIcon />,    built: true },
+      { href: "/subscriptions",label: "Subscriptions",      icon: <ReceiptIcon />, built: true },
     ],
   },
   {
