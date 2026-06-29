@@ -428,18 +428,13 @@ export default function MoneyPlanPage() {
   const upcomingPaydays = useMemo(() => nextPaydays(plan.settings.paydayAnchor, today, 6), [plan.settings.paydayAnchor, today]);
   const nextPayday = upcomingPaydays[0];
 
-  // Show bills for the full current pay period (today → day before payday after next)
-  // so you always see a meaningful window even when payday is tomorrow.
-  // Reserve only what's due BEFORE next payday (exclusive) — after that, fresh income arrives.
+  // Show all bills for the rest of the current month
   const upcomingBills = useMemo(() => {
-    // Show through the day before the payday after next (2 paydays out)
-    const windowEnd = upcomingPaydays[1] ?? upcomingPaydays[0];
-    if (!windowEnd) return [];
-    const dayBefore = new Date(windowEnd + "T00:00:00");
-    dayBefore.setDate(dayBefore.getDate() - 1);
-    const toDate = dayBefore.toISOString().slice(0, 10);
+    const d = new Date(today + "T00:00:00");
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    const toDate = lastDay.toISOString().slice(0, 10);
     return billsBetween(financeItems, today, toDate);
-  }, [financeItems, today, upcomingPaydays]);
+  }, [financeItems, today]);
 
   // Only reserve bills that hit BEFORE the next paycheck (exclusive)
   const billsReserved = useMemo(() => {
@@ -714,8 +709,8 @@ export default function MoneyPlanPage() {
             {/* Upcoming bills — always show full pay period */}
             <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "6px", padding: "10px 14px", marginBottom: "14px" }}>
               <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)", margin: "0 0 6px" }}>
-                Upcoming bills
-                {billsReserved > 0 && <span style={{ color: "var(--yellow)", marginLeft: "8px" }}>{fmt$(billsReserved)} reserved before paycheck ({nextPayday})</span>}
+                Bills remaining this month
+                {billsReserved > 0 && <span style={{ color: "var(--yellow)", marginLeft: "8px" }}>— {fmt$(billsReserved)} due before paycheck ({nextPayday})</span>}
               </p>
               {upcomingBills.length === 0 ? (
                 <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0 }}>No bills found — make sure Bills &amp; Budget has loaded at least once.</p>
