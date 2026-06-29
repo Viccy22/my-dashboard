@@ -337,6 +337,25 @@ export default function MoneyPlanPage() {
     setPlan(prev => { const next = fn(prev); save(next); return next; });
   }, [save]);
 
+  const updateDebtBalance = useCallback((id: string, newBalance: number) => {
+    setDebtAccounts(prev => {
+      const updated = prev.map(d => d.id === id ? { ...d, balance: newBalance } : d);
+      // Write back to the shared finances data blob
+      const finances = rawRef.current.finances as ({ debt?: { accounts: unknown[] } } | undefined);
+      const newData = {
+        ...rawRef.current,
+        finances: { ...(finances ?? {}), debt: { accounts: updated } },
+      };
+      rawRef.current = newData;
+      setStatus("saving");
+      fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) })
+        .then(r => r.ok ? setStatus("saved") : setStatus("error"))
+        .catch(() => setStatus("error"))
+        .finally(() => { clearTimeout(statusTimer.current); statusTimer.current = setTimeout(() => setStatus("idle"), 2200); });
+      return updated;
+    });
+  }, []);
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const today = useMemo(() => todayStr(), []);
@@ -578,6 +597,32 @@ export default function MoneyPlanPage() {
           <div className="card">
             <p className="card-title">Dollar Sweep — Assign Every Dollar</p>
             <p style={{ fontSize: "12.5px", color: "var(--text-3)", marginBottom: "12px" }}>Enter your current checking balance to see exactly where it all goes.</p>
+
+            {/* CC balance updater (pre-pivot only, or always visible if cards remain) */}
+            {debtAccounts.filter(d => d.type === "credit_card" && d.balance > 0).length > 0 && (
+              <details style={{ marginBottom: "14px" }}>
+                <summary style={{ fontSize: "12px", color: "var(--text-3)", cursor: "pointer", userSelect: "none", padding: "4px 0" }}>
+                  Update card balances <span style={{ color: "var(--text-3)", fontSize: "11px" }}>(click to expand)</span>
+                </summary>
+                <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {debtAccounts.filter(d => d.type === "credit_card").sort((a, b) => b.apr - a.apr).map(d => (
+                    <div key={d.id} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <span style={{ flex: 1, fontSize: "12.5px", color: "var(--text-2)" }}>{d.name} <span style={{ color: "var(--text-3)", fontSize: "11px" }}>({d.apr}% APR)</span></span>
+                      <div style={{ display: "flex", alignItems: "center", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 10px" }}>
+                        <span style={{ color: "var(--text-3)", marginRight: "4px", fontSize: "12px" }}>$</span>
+                        <input type="number" step="0.01" min="0"
+                          defaultValue={d.balance.toFixed(2)}
+                          onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v !== d.balance) updateDebtBalance(d.id, v); }}
+                          onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          style={{ background: "none", border: "none", outline: "none", color: "var(--text)", fontFamily: "inherit", fontSize: "13px", width: "90px" }} />
+                      </div>
+                      {d.balance === 0 && <span style={{ fontSize: "11px", color: "var(--green)" }}>✓ Paid</span>}
+                    </div>
+                  ))}
+                  <p style={{ fontSize: "11px", color: "var(--text-3)", margin: 0 }}>Tab away or press Enter to save. Updates Bills &amp; Budget page too.</p>
+                </div>
+              </details>
+            )}
             <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 12px", flex: "0 0 160px" }}>
                 <span style={{ color: "var(--text-3)", marginRight: "4px" }}>$</span>
