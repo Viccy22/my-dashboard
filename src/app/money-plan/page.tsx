@@ -162,15 +162,61 @@ function threePaycheckMonths(anchor: string, from: string, months: number): stri
   return result.sort();
 }
 
+// ── Finance item schedule helpers ─────────────────────────────────────────────
+
+type FinanceItem = {
+  id: string; name: string; amount: number; active: boolean;
+  startDate?: string; endDate?: string;
+  schedule: { type: string; dayOfMonth?: number; dayOfWeek?: number; anchorDate?: string; date?: string; month?: number; day?: number };
+};
+
+function billAppliesToDate(item: FinanceItem, dateStr: string): boolean {
+  if (!item.active) return false;
+  if (item.startDate && dateStr < item.startDate) return false;
+  if (item.endDate && dateStr > item.endDate) return false;
+  const d = new Date(dateStr + "T00:00:00");
+  const s = item.schedule;
+  switch (s.type) {
+    case "monthly":  return d.getDate() === s.dayOfMonth;
+    case "weekly":   return d.getDay() === s.dayOfWeek;
+    case "biweekly": {
+      if (!s.anchorDate) return false;
+      const anchor = new Date(s.anchorDate + "T00:00:00");
+      const diff = Math.round((d.getTime() - anchor.getTime()) / 86400000);
+      return diff >= 0 && diff % 14 === 0;
+    }
+    case "yearly": return (d.getMonth() + 1) === s.month && d.getDate() === s.day;
+    case "once":   return dateStr === s.date;
+    default:       return false;
+  }
+}
+
+function billsBetween(items: FinanceItem[], fromDate: string, toDate: string): { date: string; name: string; amount: number }[] {
+  const results: { date: string; name: string; amount: number }[] = [];
+  const from = new Date(fromDate + "T00:00:00");
+  const to   = new Date(toDate   + "T00:00:00");
+  for (let cur = new Date(from); cur <= to; cur.setDate(cur.getDate() + 1)) {
+    const ds = cur.toISOString().slice(0, 10);
+    for (const item of items) {
+      if (item.amount < 0 && billAppliesToDate(item, ds)) {
+        results.push({ date: ds, name: item.name, amount: Math.abs(item.amount) });
+      }
+    }
+  }
+  return results;
+}
+
 type SweepLine = { name: string; amount: number; type: "buffer" | "layerA" | "goal" | "extra"; warn?: boolean };
 
 function sweepBalance(
   balance: number, settings: Settings, goals: Goal[],
   contributions: ContribYear[], today: string, debtAccounts: DebtAccount[] = [],
+  billsReserved = 0,
 ): SweepLine[] {
   const isPivot = today >= settings.pivotDate;
-  const surplus = balance - settings.buffer;
+  const surplus = balance - settings.buffer - billsReserved;
   const lines: SweepLine[] = [{ name: "Checking buffer (floor)", amount: settings.buffer, type: "buffer" }];
+  if (billsReserved > 0) lines.push({ name: "Reserved — bills before next paycheck", amount: billsReserved, type: "buffer" });
   if (surplus <= 0) return lines;
 
   let rem = surplus;
@@ -299,6 +345,7 @@ export default function MoneyPlanPage() {
   const rawRef = useRef<DashData>({});
   const [plan, setPlan] = useState<MoneyPlanData>(seedPlan());
   const [debtAccounts, setDebtAccounts] = useState<DebtAccount[]>(DEFAULT_DEBTS);
+  const [financeItems, setFinanceItems] = useState<FinanceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const statusTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -308,6 +355,9 @@ export default function MoneyPlanPage() {
   useEffect(() => {
     fetch("/api/data").then(r => r.json()).then(({ data }) => {
       rawRef.current = data ?? {};
+      // Load recurring bill items for upcoming-bills calculation
+      const items = (data?.finances?.items ?? []) as FinanceItem[];
+      if (items.length) setFinanceItems(items);
       // Load CC balances — merge DB data over defaults so saved balances win
       const dbAccounts = (data?.finances?.debt?.accounts ?? []) as DebtAccount[];
       if (dbAccounts.length) {
@@ -377,6 +427,17 @@ export default function MoneyPlanPage() {
 
   const upcomingPaydays = useMemo(() => nextPaydays(plan.settings.paydayAnchor, today, 6), [plan.settings.paydayAnchor, today]);
   const nextPayday = upcomingPaydays[0];
+
+  // Bills due between today (inclusive) and the day before next paycheck
+  const upcomingBills = useMemo(() => {
+    if (!nextPayday) return [];
+    const dayBefore = new Date(nextPayday + "T00:00:00");
+    dayBefore.setDate(dayBefore.getDate() - 1);
+    const toDate = dayBefore.toISOString().slice(0, 10);
+    return billsBetween(financeItems, today, toDate);
+  }, [financeItems, today, nextPayday]);
+
+  const billsTotal = useMemo(() => upcomingBills.reduce((s, b) => s + b.amount, 0), [upcomingBills]);
   const nextPaydayDays = daysUntil(nextPayday, today);
 
   const accelMonths = useMemo(() => threePaycheckMonths(plan.settings.paydayAnchor, today, 18), [plan.settings.paydayAnchor, today]);
@@ -450,8 +511,8 @@ export default function MoneyPlanPage() {
   const sweepLines = useMemo(() => {
     const n = parseFloat(sweepInput);
     if (isNaN(n) || n <= 0) return null;
-    return sweepBalance(n, plan.settings, plan.goals, plan.contributions, today, debtAccounts);
-  }, [sweepInput, plan.settings, plan.goals, plan.contributions, today, debtAccounts]);
+    return sweepBalance(n, plan.settings, plan.goals, plan.contributions, today, debtAccounts, billsTotal);
+  }, [sweepInput, plan.settings, plan.goals, plan.contributions, today, debtAccounts, billsTotal]);
 
   // ── Settings edit state ────────────────────────────────────────────────────
 
@@ -475,8 +536,8 @@ export default function MoneyPlanPage() {
   const foundMoneyLines = useMemo(() => {
     const n = parseFloat(foundMoneyInput);
     if (isNaN(n) || n <= 0) return null;
-    return sweepBalance(plan.settings.buffer + n, plan.settings, plan.goals, plan.contributions, today, debtAccounts);
-  }, [foundMoneyInput, plan.settings, plan.goals, plan.contributions, today]);
+    return sweepBalance(plan.settings.buffer + n, plan.settings, plan.goals, plan.contributions, today, debtAccounts, billsTotal);
+  }, [foundMoneyInput, plan.settings, plan.goals, plan.contributions, today, debtAccounts, billsTotal]);
 
   // ── Student loan deferment ─────────────────────────────────────────────────
 
@@ -637,6 +698,24 @@ export default function MoneyPlanPage() {
                 </div>
               </details>
             )}
+            {/* Upcoming bills warning */}
+            {upcomingBills.length > 0 && (
+              <div style={{ background: "var(--yellow-dim)", border: "1px solid var(--yellow)", borderRadius: "6px", padding: "10px 14px", marginBottom: "14px" }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--yellow)", margin: "0 0 6px" }}>
+                  Bills before your next paycheck ({nextPayday}) — {fmt$(billsTotal)} reserved
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  {upcomingBills.map((b, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-2)" }}>
+                      <span>{new Date(b.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {b.name}</span>
+                      <span style={{ color: "var(--red)" }}>−{fmt$(b.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--text-3)", margin: "6px 0 0" }}>These are automatically reserved before any goal dollars are moved.</p>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 12px", flex: "0 0 160px" }}>
                 <span style={{ color: "var(--text-3)", marginRight: "4px" }}>$</span>
