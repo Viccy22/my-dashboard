@@ -269,7 +269,18 @@ function sweepBalance(
     rem -= amt;
   }
 
-  if (rem > 0) lines.push({ name: "All goals funded — add a new goal or boost Roth IRA", amount: rem, type: "extra" });
+  if (rem > 0) {
+    const year = parseInt(today.slice(0, 4));
+    const contrib = contributions.find(c => c.year === year);
+    const rothUsed = contrib?.roth ?? 0;
+    const rothRoom = Math.max(0, settings.rothAnnualLimit - rothUsed);
+    if (rothRoom > 0) {
+      const amt = Math.min(rem, rothRoom);
+      lines.push({ name: `Roth IRA ($${rothRoom.toLocaleString()} remaining this year)`, amount: amt, type: "extra" });
+      rem -= amt;
+    }
+    if (rem > 0) lines.push({ name: "Roth IRA maxed — consider taxable brokerage or extra mortgage payment", amount: rem, type: "extra" });
+  }
   return lines;
 }
 
