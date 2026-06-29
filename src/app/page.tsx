@@ -73,14 +73,6 @@ function isTretTonight(entries: SkincareEntry[], today: string): boolean {
   const since = daysBetween(lastTret, today);
   return since >= 3;
 }
-function isAzelaicToday(entries: SkincareEntry[], today: string): boolean {
-  const lastAzel = [...entries].sort((a, b) => b.date.localeCompare(a.date)).find(e => e.am.azelaicAcid)?.date ?? null;
-  if (!lastAzel) return true;
-  const since = daysBetween(lastAzel, today);
-  // Never on same day as tret
-  if (isTretTonight(entries, today) && since >= 2) return false;
-  return since >= 2;
-}
 
 const XIcon = () => (
   <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -289,7 +281,6 @@ export default function HomePage() {
 
   const todaySkincare = skincare.find(e => e.date === today);
   const tretTonight   = isTretTonight(skincare, today);
-  const azelaicToday  = isAzelaicToday(skincare, today);
 
   // Bills due in next 7 days
   const billsNext7: { item: RecurringItem; date: string }[] = [];
