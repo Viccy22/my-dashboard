@@ -138,6 +138,15 @@ function PlanIcon() {
     </svg>
   );
 }
+function HomeUpgradeIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <path d="M2 8.5L8 2l6 6.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 7.5v6h3v-3h2v3h3V7.5" strokeLinejoin="round" />
+      <path d="M11 3.5l1.5 1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
 function CarIcon() {
   return (
     <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -186,9 +195,10 @@ const groups: NavGroup[] = [
   {
     label: "Home",
     items: [
-      { href: "/garage",       label: "Garage",       icon: <CarIcon />,   built: true },
-      { href: "/maintenance",  label: "Maintenance",  icon: <WrenchIcon />, built: true },
-      { href: "/measurements", label: "Measurements", icon: <RulerIcon />, built: true },
+      { href: "/garage",            label: "Garage",                    icon: <CarIcon />,          built: true },
+      { href: "/maintenance",       label: "Maintenance",               icon: <WrenchIcon />,       built: true },
+      { href: "/measurements",      label: "Measurements",              icon: <RulerIcon />,        built: true },
+      { href: "/household-planner", label: "Household Upgrade Planner", icon: <HomeUpgradeIcon />,  built: true },
     ],
   },
   {
