@@ -138,6 +138,15 @@ function PlanIcon() {
     </svg>
   );
 }
+function HomeOpsIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <rect x="1.5" y="2" width="13" height="12" rx="1.5" />
+      <path d="M4.5 6h7M4.5 8.5h5M4.5 11h3" strokeLinecap="round" />
+      <path d="M1.5 5h13" />
+    </svg>
+  );
+}
 function HomeUpgradeIcon() {
   return (
     <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -198,6 +207,7 @@ const groups: NavGroup[] = [
       { href: "/garage",            label: "Garage",                    icon: <CarIcon />,          built: true },
       { href: "/maintenance",       label: "Maintenance",               icon: <WrenchIcon />,       built: true },
       { href: "/measurements",      label: "Measurements",              icon: <RulerIcon />,        built: true },
+      { href: "/home-ops",          label: "Home Operations",           icon: <HomeOpsIcon />,      built: true },
       { href: "/household-planner", label: "Household Upgrade Planner", icon: <HomeUpgradeIcon />,  built: true },
     ],
   },
