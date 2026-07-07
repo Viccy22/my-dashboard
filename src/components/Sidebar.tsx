@@ -138,6 +138,21 @@ function PlanIcon() {
     </svg>
   );
 }
+function WishlistIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <path d="M8 13S2 9.5 2 5.5a3 3 0 0 1 6 0 3 3 0 0 1 6 0C14 9.5 8 13 8 13z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function DiamondIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <path d="M8 2l4 4-4 8-4-8 4-4z" strokeLinejoin="round" />
+      <path d="M4 6h8" strokeLinecap="round" />
+    </svg>
+  );
+}
 function HomeOpsIcon() {
   return (
     <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -217,6 +232,8 @@ const groups: NavGroup[] = [
       { href: "/finances",     label: "Bills & Budget",     icon: <DollarIcon />,  built: true },
       { href: "/money-plan",   label: "Money Movement Plan", icon: <PlanIcon />,    built: true },
       { href: "/subscriptions",label: "Subscriptions",      icon: <ReceiptIcon />, built: true },
+      { href: "/bifl",         label: "Buy It For Life",    icon: <DiamondIcon />,  built: true },
+      { href: "/wishlist",     label: "Wishlist",           icon: <WishlistIcon />, built: true },
     ],
   },
   {
