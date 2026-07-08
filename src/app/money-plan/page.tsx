@@ -162,6 +162,110 @@ function threePaycheckMonths(anchor: string, from: string, months: number): stri
   return result.sort();
 }
 
+// ── Forward projection ────────────────────────────────────────────────────────
+
+type ProjectedState = {
+  goals: Goal[];
+  debts: DebtAccount[];
+  contributions: ContribYear[];
+  paychecksSimulated: number;
+  monthsSimulated: number;
+};
+
+function projectStateToDate(
+  targetDate: string, today: string,
+  settings: Settings, goals: Goal[], debts: DebtAccount[],
+  contributions: ContribYear[], financeItems: FinanceItem[],
+): ProjectedState {
+  const daysBetween = Math.round((new Date(targetDate + "T00:00:00").getTime() - new Date(today + "T00:00:00").getTime()) / 86400000);
+  if (daysBetween <= 0) return { goals, debts, contributions, paychecksSimulated: 0, monthsSimulated: 0 };
+
+  let projGoals = goals.map(g => ({ ...g }));
+  let projDebts = debts.map(d => ({ ...d }));
+  let projContribs = contributions.map(c => ({ ...c }));
+
+  // Get all paydays between today (exclusive) and targetDate (exclusive)
+  const pays = nextPaydays(settings.paydayAnchor, addDays(today, 1), Math.ceil(daysBetween / 7) + 2)
+    .filter(p => p > today && p < targetDate);
+
+  let paychecksSimulated = 0;
+  const monthsSeen = new Set<string>();
+  const layerADoneThisMonth = new Set<string>(); // track monthly Layer A per month
+
+  for (const payday of pays) {
+    const isPost = payday >= settings.pivotDate;
+    const take = isPost ? settings.takehomePost : settings.takehomePre;
+    const moKey = payday.slice(0, 7);
+    monthsSeen.add(moKey);
+    paychecksSimulated++;
+
+    // Bills between this payday and the next payday (exclusive)
+    const nextPay = addDays(payday, 14);
+    const billsAmt = billsBetween(financeItems, payday, nextPay < targetDate ? addDays(nextPay, -1) : addDays(targetDate, -1))
+      .reduce((s, b) => s + b.amount, 0);
+
+    let rem = Math.max(0, take - billsAmt);
+
+    // Layer A — monthly items, only charge once per month
+    if (isPost && !layerADoneThisMonth.has(moKey)) {
+      layerADoneThisMonth.add(moKey);
+      const sinkAmt = Math.min(rem, settings.sinkingMonthly); rem -= sinkAmt;
+      const nlAmt = Math.min(rem, settings.studentLoanMonthly); rem -= nlAmt;
+      const starterDone = projGoals.find(g => g.id === "starter_ef")?.done ?? false;
+      if (starterDone && rem > 0) {
+        const yr = parseInt(moKey.slice(0, 4));
+        const c = projContribs.find(x => x.year === yr) ?? { year: yr, hsa: 0, roth: 0 };
+        const hsaRoom = Math.max(0, settings.hsaAnnualLimit - c.hsa);
+        const hsaAmt = Math.min(rem, settings.hsaMonthly, hsaRoom);
+        if (hsaAmt > 0) {
+          const exists = projContribs.find(x => x.year === yr);
+          if (exists) projContribs = projContribs.map(x => x.year === yr ? { ...x, hsa: x.hsa + hsaAmt } : x);
+          else projContribs = [...projContribs, { year: yr, hsa: hsaAmt, roth: 0 }];
+          rem -= hsaAmt;
+        }
+      }
+    }
+
+    // Subtract discretionary (rough)
+    rem = Math.max(0, rem - settings.discretionaryMonthly / 2); // half per paycheck
+
+    if (!isPost) {
+      // Pre-pivot: pay down cards by APR desc
+      const cards = [...projDebts].filter(d => d.type === "credit_card" && d.balance > 0).sort((a, b) => b.apr - a.apr);
+      for (const card of cards) {
+        if (rem <= 0) break;
+        const pay = Math.min(rem, card.balance);
+        projDebts = projDebts.map(d => d.id === card.id ? { ...d, balance: Math.max(0, d.balance - pay) } : d);
+        rem -= pay;
+      }
+    } else {
+      // Post-pivot: Layer B goal waterfall
+      const active = projGoals.filter(g => !g.done && !g.paused);
+      for (const g of active) {
+        if (rem <= 0) break;
+        const needed = g.target - g.current;
+        const pay = Math.min(rem, needed);
+        projGoals = projGoals.map(x => x.id === g.id ? { ...x, current: x.current + pay, done: x.current + pay >= x.target } : x);
+        rem -= pay;
+      }
+      // Any remainder → Roth
+      if (rem > 0) {
+        const yr = parseInt(moKey.slice(0, 4));
+        const c = projContribs.find(x => x.year === yr) ?? { year: yr, hsa: 0, roth: 0 };
+        const rothRoom = Math.max(0, settings.rothAnnualLimit - c.roth);
+        const rothAmt = Math.min(rem, rothRoom);
+        if (rothAmt > 0) {
+          const exists = projContribs.find(x => x.year === yr);
+          if (exists) projContribs = projContribs.map(x => x.year === yr ? { ...x, roth: x.roth + rothAmt } : x);
+          else projContribs = [...projContribs, { year: yr, hsa: 0, roth: rothAmt }];
+        }
+      }
+    }
+  }
+
+  return { goals: projGoals, debts: projDebts, contributions: projContribs, paychecksSimulated, monthsSimulated: monthsSeen.size };
+}
+
 // ── Finance item schedule helpers ─────────────────────────────────────────────
 
 type FinanceItem = {
@@ -562,7 +666,17 @@ export default function MoneyPlanPage() {
     const monthEnd = lastDay.toISOString().slice(0, 10);
     const windfallBills = billsBetween(financeItems, useDate, monthEnd);
     const windfallReserved = windfallBills.reduce((s, b) => s + b.amount, 0);
-    return { lines: sweepBalance(n, plan.settings, plan.goals, plan.contributions, useDate, debtAccounts, windfallReserved), bills: windfallBills, reserved: windfallReserved, useDate };
+    // If a future date is set, project forward to that date first
+    const proj = foundMoneyDate && foundMoneyDate > today
+      ? projectStateToDate(foundMoneyDate, today, plan.settings, plan.goals, debtAccounts, plan.contributions, financeItems)
+      : null;
+    const sweepGoals = proj?.goals ?? plan.goals;
+    const sweepDebts = proj?.debts ?? debtAccounts;
+    const sweepContribs = proj?.contributions ?? plan.contributions;
+    return {
+      lines: sweepBalance(n, plan.settings, sweepGoals, sweepContribs, useDate, sweepDebts, windfallReserved),
+      bills: windfallBills, reserved: windfallReserved, useDate, proj,
+    };
   }, [foundMoneyInput, foundMoneyDate, plan.settings, plan.goals, plan.contributions, today, debtAccounts, financeItems]);
 
   // ── Future money planner ───────────────────────────────────────────────────
@@ -924,15 +1038,87 @@ export default function MoneyPlanPage() {
                 value={foundMoneyDate} onChange={e => setFoundMoneyDate(e.target.value)} />
               {(foundMoneyInput || foundMoneyDate) && <button className="btn btn-ghost" style={{ fontSize: "12px" }} onClick={() => { setFoundMoneyInput(""); setFoundMoneyDate(""); }}>Clear</button>}
             </div>
-            {foundMoneyDate && <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "10px" }}>Estimating as of <strong style={{ color: "var(--text-2)" }}>{fmtDateFull(foundMoneyDate)}</strong> — bills for that month are reserved first.</p>}
+            {foundMoneyDate && <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "10px" }}>Projecting forward to <strong style={{ color: "var(--text-2)" }}>{fmtDateFull(foundMoneyDate)}</strong> — simulates regular paychecks, card paydowns, and goal progress between now and then, then applies your windfall on top.</p>}
             {foundMoneyLines && (() => {
-              const { lines, bills, reserved } = foundMoneyLines;
+              const { lines, bills, reserved, proj } = foundMoneyLines;
               return (
-                <div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+                  {/* Projected state panel (only when future date set) */}
+                  {proj && (
+                    <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "7px", padding: "12px 14px" }}>
+                      <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
+                        Projected State by {fmtDateFull(foundMoneyDate)} · {proj.paychecksSimulated} paycheck{proj.paychecksSimulated !== 1 ? "s" : ""} simulated
+                      </p>
+
+                      {/* CC balances */}
+                      {proj.debts.filter(d => d.type === "credit_card").length > 0 && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <p style={{ fontSize: "11px", color: "var(--text-3)", margin: "0 0 5px" }}>Credit cards by then</p>
+                          {proj.debts.filter(d => d.type === "credit_card").sort((a, b) => b.apr - a.apr).map(d => {
+                            const orig = debtAccounts.find(x => x.id === d.id);
+                            const paid = orig ? Math.max(0, orig.balance - d.balance) : 0;
+                            return (
+                              <div key={d.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", padding: "2px 0" }}>
+                                <span style={{ color: "var(--text-2)" }}>{d.name}</span>
+                                <span>
+                                  {d.balance === 0
+                                    ? <span style={{ color: "var(--green)", fontWeight: 600 }}>Paid off ✓</span>
+                                    : <span style={{ color: "var(--text)" }}>{fmt$(d.balance)} <span style={{ color: "var(--green)", fontSize: "11px" }}>({fmt$(paid)} paid down)</span></span>
+                                  }
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Goal progress */}
+                      {proj.goals.filter(g => !g.paused).length > 0 && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <p style={{ fontSize: "11px", color: "var(--text-3)", margin: "0 0 5px" }}>Goals by then</p>
+                          {proj.goals.filter(g => !g.paused).map(g => {
+                            const orig = plan.goals.find(x => x.id === g.id);
+                            const gained = orig ? Math.max(0, g.current - orig.current) : 0;
+                            return (
+                              <div key={g.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", padding: "2px 0" }}>
+                                <span style={{ color: g.done ? "var(--green)" : "var(--text-2)" }}>{g.name}</span>
+                                <span>
+                                  {g.done
+                                    ? <span style={{ color: "var(--green)", fontWeight: 600 }}>Done ✓</span>
+                                    : <span style={{ color: "var(--text)" }}>{fmt$(g.current)}<span style={{ color: "var(--text-3)", fontSize: "11px" }}>/{fmt$(g.target)}{gained > 0 ? ` (+${fmt$(gained)})` : ""}</span></span>
+                                  }
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* HSA/Roth projections */}
+                      {(() => {
+                        const yr = parseInt((foundMoneyDate || today).slice(0, 4));
+                        const projC = proj.contributions.find(c => c.year === yr);
+                        const origC = plan.contributions.find(c => c.year === yr);
+                        const hsaGain = projC ? projC.hsa - (origC?.hsa ?? 0) : 0;
+                        const rothGain = projC ? projC.roth - (origC?.roth ?? 0) : 0;
+                        if (hsaGain <= 0 && rothGain <= 0) return null;
+                        return (
+                          <div>
+                            <p style={{ fontSize: "11px", color: "var(--text-3)", margin: "0 0 5px" }}>Tax-advantaged contributions by then</p>
+                            {hsaGain > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", padding: "2px 0" }}><span style={{ color: "var(--text-2)" }}>HSA contributed</span><span style={{ color: "var(--green)" }}>+{fmt$(hsaGain)}</span></div>}
+                            {rothGain > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", padding: "2px 0" }}><span style={{ color: "var(--text-2)" }}>Roth IRA contributed</span><span style={{ color: "var(--green)" }}>+{fmt$(rothGain)}</span></div>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Bills that month */}
                   {bills.length > 0 && (
-                    <div style={{ marginBottom: "10px", background: "var(--surface-raised)", borderRadius: "6px", padding: "10px 12px" }}>
+                    <div style={{ background: "var(--surface-raised)", borderRadius: "6px", padding: "10px 12px" }}>
                       <p style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-3)", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                        Bills that month — {fmt$(reserved)} reserved
+                        Bills that month — {fmt$(reserved)} reserved from windfall
                       </p>
                       {bills.map((b, i) => (
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-2)", padding: "1px 0" }}>
@@ -942,15 +1128,22 @@ export default function MoneyPlanPage() {
                       ))}
                     </div>
                   )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    {lines.map((l, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", background: l.type === "buffer" ? "var(--surface-raised)" : l.type === "goal" ? "var(--green-dim)" : "rgba(129,140,248,0.06)", borderRadius: "5px" }}>
-                        <span style={{ fontSize: "13px", color: l.type === "buffer" ? "var(--text-3)" : l.type === "goal" ? "var(--green)" : "var(--accent-text)" }}>
-                          {l.type !== "buffer" && "→ "}{l.name}
-                        </span>
-                        <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", color: l.type === "buffer" ? "var(--text-3)" : l.type === "goal" ? "var(--green)" : "var(--accent)" }}>{fmt$(l.amount)}</span>
-                      </div>
-                    ))}
+
+                  {/* Windfall sweep */}
+                  <div>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px" }}>
+                      Where the {fmt$(parseFloat(foundMoneyInput))} goes
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      {lines.map((l, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", background: l.type === "buffer" ? "var(--surface-raised)" : l.type === "goal" ? "var(--green-dim)" : l.type === "extra" ? "var(--yellow-dim)" : "rgba(129,140,248,0.06)", borderRadius: "5px" }}>
+                          <span style={{ fontSize: "13px", color: l.type === "buffer" ? "var(--text-3)" : l.type === "goal" ? "var(--green)" : l.type === "extra" ? "var(--yellow)" : "var(--accent-text)" }}>
+                            {l.type !== "buffer" && "→ "}{l.name}
+                          </span>
+                          <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", color: l.type === "buffer" ? "var(--text-3)" : l.type === "goal" ? "var(--green)" : l.type === "extra" ? "var(--yellow)" : "var(--accent)" }}>{fmt$(l.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               );
