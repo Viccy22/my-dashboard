@@ -552,11 +552,18 @@ export default function MoneyPlanPage() {
   // ── Found money ────────────────────────────────────────────────────────────
 
   const [foundMoneyInput, setFoundMoneyInput] = useState("");
+  const [foundMoneyDate, setFoundMoneyDate] = useState("");
   const foundMoneyLines = useMemo(() => {
     const n = parseFloat(foundMoneyInput);
     if (isNaN(n) || n <= 0) return null;
-    return sweepBalance(plan.settings.buffer + n, plan.settings, plan.goals, plan.contributions, today, debtAccounts, billsTotal);
-  }, [foundMoneyInput, plan.settings, plan.goals, plan.contributions, today, debtAccounts, billsTotal]);
+    const useDate = foundMoneyDate || today;
+    const d = new Date(useDate + "T00:00:00");
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    const monthEnd = lastDay.toISOString().slice(0, 10);
+    const windfallBills = billsBetween(financeItems, useDate, monthEnd);
+    const windfallReserved = windfallBills.reduce((s, b) => s + b.amount, 0);
+    return { lines: sweepBalance(n, plan.settings, plan.goals, plan.contributions, useDate, debtAccounts, windfallReserved), bills: windfallBills, reserved: windfallReserved, useDate };
+  }, [foundMoneyInput, foundMoneyDate, plan.settings, plan.goals, plan.contributions, today, debtAccounts, financeItems]);
 
   // ── Future money planner ───────────────────────────────────────────────────
 
@@ -900,29 +907,54 @@ export default function MoneyPlanPage() {
             )}
           </div>
 
-          {/* FOUND MONEY ROUTER */}
+          {/* WINDFALL ESTIMATOR */}
           <div className="card">
-            <p className="card-title">Found Money Router</p>
-            <p style={{ fontSize: "12.5px", color: "var(--text-3)", marginBottom: "10px" }}>Got a tax refund, tuition reimbursement (~$630), or extra paycheck? Run it through the sweep so it hits the right goal.</p>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "10px" }}>
+            <p className="card-title">Windfall Estimator</p>
+            <p style={{ fontSize: "12.5px", color: "var(--text-3)", marginBottom: "12px" }}>
+              Got a tax refund, bonus, settlement, or gift? Enter the amount — and optionally a future date — to see exactly where it should go, with bills for that month already accounted for.
+            </p>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 12px" }}>
                 <span style={{ color: "var(--text-3)", marginRight: "4px" }}>$</span>
-                <input type="number" step="0.01" placeholder="Windfall amount"
+                <input type="number" step="0.01" placeholder="Amount (e.g. 6000)"
                   style={{ background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: "14px", width: "130px", fontFamily: "inherit" }}
                   value={foundMoneyInput} onChange={e => setFoundMoneyInput(e.target.value)} />
               </div>
-              {foundMoneyInput && <button className="btn btn-ghost" style={{ fontSize: "12px" }} onClick={() => setFoundMoneyInput("")}>Clear</button>}
+              <input type="date" className="input" style={{ width: "160px" }} placeholder="Date (optional)"
+                value={foundMoneyDate} onChange={e => setFoundMoneyDate(e.target.value)} />
+              {(foundMoneyInput || foundMoneyDate) && <button className="btn btn-ghost" style={{ fontSize: "12px" }} onClick={() => { setFoundMoneyInput(""); setFoundMoneyDate(""); }}>Clear</button>}
             </div>
-            {foundMoneyLines && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {foundMoneyLines.filter(l => l.type !== "buffer").map((l, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", background: l.type === "goal" ? "var(--green-dim)" : "rgba(129,140,248,0.06)", borderRadius: "5px" }}>
-                    <span style={{ fontSize: "13px", color: l.type === "goal" ? "var(--green)" : "var(--accent-text)" }}>→ {l.name}</span>
-                    <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", color: l.type === "goal" ? "var(--green)" : "var(--accent)" }}>{fmt$(l.amount)}</span>
+            {foundMoneyDate && <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "10px" }}>Estimating as of <strong style={{ color: "var(--text-2)" }}>{fmtDateFull(foundMoneyDate)}</strong> — bills for that month are reserved first.</p>}
+            {foundMoneyLines && (() => {
+              const { lines, bills, reserved } = foundMoneyLines;
+              return (
+                <div>
+                  {bills.length > 0 && (
+                    <div style={{ marginBottom: "10px", background: "var(--surface-raised)", borderRadius: "6px", padding: "10px 12px" }}>
+                      <p style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-3)", margin: "0 0 5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        Bills that month — {fmt$(reserved)} reserved
+                      </p>
+                      {bills.map((b, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-2)", padding: "1px 0" }}>
+                          <span>{new Date(b.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {b.name}</span>
+                          <span style={{ color: "var(--red)" }}>−{fmt$(b.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {lines.map((l, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", background: l.type === "buffer" ? "var(--surface-raised)" : l.type === "goal" ? "var(--green-dim)" : "rgba(129,140,248,0.06)", borderRadius: "5px" }}>
+                        <span style={{ fontSize: "13px", color: l.type === "buffer" ? "var(--text-3)" : l.type === "goal" ? "var(--green)" : "var(--accent-text)" }}>
+                          {l.type !== "buffer" && "→ "}{l.name}
+                        </span>
+                        <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", color: l.type === "buffer" ? "var(--text-3)" : l.type === "goal" ? "var(--green)" : "var(--accent)" }}>{fmt$(l.amount)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* FUTURE MONEY PLANNER */}

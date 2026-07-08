@@ -62,7 +62,7 @@ const CATEGORY_META: Record<SopCategory, { label: string; icon: string; color: s
   custom:     { label: "Custom",          icon: "📋",  color: "var(--text-3)"     },
 };
 
-const TODAY_ORDER: SopCategory[] = ["morning", "dogs", "cleaning", "home_health", "vehicle", "closing"];
+const TODAY_ORDER: SopCategory[] = ["morning", "cleaning", "home_health", "dogs", "vehicle", "closing"];
 
 const PRIORITY_META: Record<Priority, { label: string; color: string }> = {
   required:    { label: "Required",    color: "var(--red)"    },
@@ -93,16 +93,12 @@ const DEFAULT_SOPS: Sop[] = [
     id: "sop_morning", name: "Morning Shift", category: "morning", icon: "☀️", order: 0, active: true,
     description: "Start the day calmly. Get yourself going, care for the dogs, and set the house up for a manageable day.",
     tasks: [
-      makeTask({ id: "m1", name: "Wake up — water, phone check, meds if needed",          order: 0, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 5  }),
-      makeTask({ id: "m2", name: "Take dogs outside for morning potty",                    order: 1, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 10 }),
-      makeTask({ id: "m3", name: "Check dogs water bowls — refill if low",                 order: 2, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 2  }),
-      makeTask({ id: "m4", name: "Give dogs morning feeding",                              order: 3, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 3  }),
-      makeTask({ id: "m5", name: "Check pee pads / any overnight accidents — clean up",   order: 4, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 5  }),
-      makeTask({ id: "m6", name: "Start one small home reset (coffee table, counter, etc)", order: 5, priority: "recommended", modes: ALL_BUT_EMERGENCY, estimatedMinutes: 5  }),
-      makeTask({ id: "m7", name: "Quick dishes / kitchen check",                           order: 6, priority: "recommended", modes: ALL_BUT_EMERGENCY, estimatedMinutes: 5  }),
-      makeTask({ id: "m8", name: "Review today's priorities — what actually needs to happen", order: 7, priority: "recommended", modes: NORMAL_AND_UP,  estimatedMinutes: 3  }),
-      makeTask({ id: "m9", name: "Check anything urgent — trash, laundry, work bag",       order: 8, priority: "optional",   modes: NORMAL_AND_UP,     estimatedMinutes: 3  }),
-      makeTask({ id: "m10", name: "Set AC/fans for the day — check dog comfort",           order: 9, priority: "recommended", modes: ALL_MODES,         estimatedMinutes: 2  }),
+      makeTask({ id: "m1",  name: "Wake up — water, phone check, meds if needed",            order: 0, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 5 }),
+      makeTask({ id: "m6",  name: "Start one small home reset (coffee table, counter, etc)", order: 1, priority: "recommended", modes: ALL_BUT_EMERGENCY, estimatedMinutes: 5 }),
+      makeTask({ id: "m7",  name: "Quick dishes / kitchen check",                            order: 2, priority: "recommended", modes: ALL_BUT_EMERGENCY, estimatedMinutes: 5 }),
+      makeTask({ id: "m10", name: "Set AC/fans for the day",                                 order: 3, priority: "recommended", modes: ALL_MODES,         estimatedMinutes: 2 }),
+      makeTask({ id: "m8",  name: "Review today's priorities — what actually needs to happen",order: 4, priority: "recommended", modes: NORMAL_AND_UP,    estimatedMinutes: 3 }),
+      makeTask({ id: "m9",  name: "Check anything urgent — trash, laundry, work bag",        order: 5, priority: "optional",   modes: NORMAL_AND_UP,     estimatedMinutes: 3 }),
     ],
   },
   {
@@ -145,18 +141,16 @@ const DEFAULT_SOPS: Sop[] = [
     id: "sop_dogs", name: "Dog Care", category: "dogs", icon: "🐾", order: 1, active: true,
     description: "Everything the dogs need to be safe, comfortable, and healthy. Non-negotiable items are marked Required.",
     tasks: [
-      makeTask({ id: "d1",  name: "Morning feeding (both dogs)",                          order: 0,  priority: "required",    modes: ALL_MODES,         estimatedMinutes: 3  }),
-      makeTask({ id: "d2",  name: "Morning potty break — outside",                        order: 1,  priority: "required",    modes: ALL_MODES,         estimatedMinutes: 10 }),
-      makeTask({ id: "d3",  name: "Fresh water — check and refill both bowls",            order: 2,  priority: "required",    modes: ALL_MODES,         estimatedMinutes: 2  }),
-      makeTask({ id: "d4",  name: "Check pee pads — clean or replace if used",           order: 3,  priority: "required",    modes: ALL_MODES,         estimatedMinutes: 5  }),
-      makeTask({ id: "d5",  name: "Midday potty check — out or pad check",               order: 4,  priority: "recommended", modes: ALL_MODES,         estimatedMinutes: 10 }),
-      makeTask({ id: "d6",  name: "Evening feeding",                                      order: 5,  priority: "required",    modes: ALL_MODES,         estimatedMinutes: 3  }),
-      makeTask({ id: "d7",  name: "Evening potty break",                                  order: 6,  priority: "required",    modes: ALL_MODES,         estimatedMinutes: 10 }),
-      makeTask({ id: "d8",  name: "Temperature check — fans/AC adequate for dogs",       order: 7,  priority: "required",    modes: ALL_MODES,         estimatedMinutes: 2  }),
-      makeTask({ id: "d9",  name: "Accident scan — check floors/rugs for missed spots",  order: 8,  priority: "recommended", modes: ALL_BUT_EMERGENCY, estimatedMinutes: 3  }),
-      makeTask({ id: "d10", name: "Quick grooming check — fur, ears, eyes, paws",        order: 9,  priority: "optional",    modes: NORMAL_AND_UP,     recurrence: "weekly", estimatedMinutes: 5  }),
-      makeTask({ id: "d11", name: "Dog medications if applicable",                        order: 10, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 2, notes: "Edit this task — add which dog, which med, and timing." }),
-      makeTask({ id: "d12", name: "Dog comfort check before bed — settled, not anxious", order: 11, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 3  }),
+      makeTask({ id: "d1",  name: "Morning feeding (both dogs)",                          order: 0, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 3  }),
+      makeTask({ id: "d2",  name: "Morning potty break — outside",                        order: 1, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 10 }),
+      makeTask({ id: "d3",  name: "Fresh water — check and refill both bowls",            order: 2, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 2  }),
+      makeTask({ id: "d6",  name: "Evening feeding",                                      order: 3, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 3  }),
+      makeTask({ id: "d7",  name: "Evening potty break",                                  order: 4, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 10 }),
+      makeTask({ id: "d8",  name: "Temperature check — fans/AC adequate for dogs",       order: 5, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 2  }),
+      makeTask({ id: "d9",  name: "Accident scan — check floors/rugs for missed spots",  order: 6, priority: "recommended", modes: ALL_BUT_EMERGENCY, estimatedMinutes: 3  }),
+      makeTask({ id: "d10", name: "Quick grooming check — fur, ears, eyes, paws",        order: 7, priority: "optional",    modes: NORMAL_AND_UP,     recurrence: "weekly", estimatedMinutes: 5  }),
+      makeTask({ id: "d11", name: "Dog medications if applicable",                        order: 8, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 2, notes: "Edit this task — add which dog, which med, and timing." }),
+      makeTask({ id: "d12", name: "Dog comfort check before bed — settled, not anxious", order: 9, priority: "required",    modes: ALL_MODES,         estimatedMinutes: 3  }),
     ],
   },
   {
@@ -212,6 +206,27 @@ function getModeTasks(sop: Sop, mode: TaskMode): SopTask[] {
   return sop.tasks.filter(t => t.active && t.modes.includes(mode)).sort((a, b) => a.order - b.order);
 }
 
+// Returns the most recent date a task was completed, or null
+function lastCompletedDate(completions: DayCompletion[], taskId: string): string | null {
+  const match = [...completions].sort((a, b) => b.date.localeCompare(a.date)).find(c => c.completedIds.includes(taskId));
+  return match?.date ?? null;
+}
+
+// For monthly tasks: hide if completed within the last 30 days
+function isMonthlyHidden(task: SopTask, completions: DayCompletion[], today: string): boolean {
+  if (task.recurrence !== "monthly") return false;
+  const last = lastCompletedDate(completions, task.id);
+  if (!last) return false;
+  const daysSince = Math.round((new Date(today + "T00:00:00").getTime() - new Date(last + "T00:00:00").getTime()) / 86400000);
+  return daysSince < 30;
+}
+
+function nextDueDate(lastDate: string): string {
+  const d = new Date(lastDate + "T00:00:00");
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().slice(0, 10);
+}
+
 function estimateMinutes(tasks: SopTask[]): number {
   return tasks.reduce((s, t) => s + t.estimatedMinutes, 0);
 }
@@ -258,14 +273,17 @@ function TaskCheckRow({ task, done, onToggle }: { task: SopTask; done: boolean; 
 
 // ── SOP today section ─────────────────────────────────────────────────────────
 
-function SopTodaySection({ sop, mode, completedIds, onToggle }: {
-  sop: Sop; mode: TaskMode; completedIds: string[]; onToggle: (id: string) => void;
+function SopTodaySection({ sop, mode, completedIds, allCompletions, today, onToggle }: {
+  sop: Sop; mode: TaskMode; completedIds: string[]; allCompletions: DayCompletion[]; today: string; onToggle: (id: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const tasks = getModeTasks(sop, mode);
-  if (!tasks.length) return null;
+  const allTasks = getModeTasks(sop, mode);
+  // Hide monthly tasks completed within 30 days — they're not due again yet
+  const hiddenMonthly = allTasks.filter(t => isMonthlyHidden(t, allCompletions, today));
+  const tasks = allTasks.filter(t => !isMonthlyHidden(t, allCompletions, today));
+  if (!tasks.length && !hiddenMonthly.length) return null;
   const doneCount = tasks.filter(t => completedIds.includes(t.id)).length;
-  const allDone = doneCount === tasks.length;
+  const allDone = tasks.length > 0 ? doneCount === tasks.length : hiddenMonthly.length > 0;
   const cm = CATEGORY_META[sop.category];
   const mins = estimateMinutes(tasks);
 
@@ -302,9 +320,28 @@ function SopTodaySection({ sop, mode, completedIds, onToggle }: {
       {/* Tasks */}
       {!collapsed && (
         <div>
+          {tasks.length === 0 && hiddenMonthly.length > 0 && (
+            <div style={{ padding: "10px 14px", fontSize: "12.5px", color: "var(--text-3)", fontStyle: "italic" }}>
+              All tasks done for now.
+            </div>
+          )}
           {tasks.map(task => (
             <TaskCheckRow key={task.id} task={task} done={completedIds.includes(task.id)} onToggle={() => onToggle(task.id)} />
           ))}
+          {hiddenMonthly.length > 0 && (
+            <div style={{ padding: "8px 14px", borderTop: tasks.length > 0 ? "1px solid var(--border)" : "none" }}>
+              <p style={{ fontSize: "10.5px", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 4px" }}>Monthly — snoozed until due</p>
+              {hiddenMonthly.map(task => {
+                const last = lastCompletedDate(allCompletions, task.id)!;
+                return (
+                  <div key={task.id} style={{ fontSize: "12px", color: "var(--text-3)", padding: "2px 0", display: "flex", justifyContent: "space-between" }}>
+                    <span>{task.name}</span>
+                    <span style={{ fontSize: "11px" }}>due {nextDueDate(last)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -535,6 +572,7 @@ export default function HomeOpsPage() {
   // ── Load ─────────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     fetch("/api/data").then(r => r.json()).then(({ data: d }) => {
       rawRef.current = d ?? {};
       const saved = d?.homeOps as HomeOpsData | undefined;
@@ -542,7 +580,13 @@ export default function HomeOpsPage() {
         // Merge saved SOPs over defaults — preserve edits but add new default SOPs
         const savedIds = new Set(saved.sops.map((s: Sop) => s.id));
         const newDefaults = DEFAULT_SOPS.filter(s => !savedIds.has(s.id));
-        setData({ ...seedData(), ...saved, sops: [...saved.sops, ...newDefaults], completions: pruneCompletions(saved.completions ?? []) });
+        // Migration: remove tasks that were consolidated/deleted from defaults
+        const removedTaskIds = new Set(["m2", "m3", "m4", "m5", "d4", "d5"]);
+        const migratedSops = [...saved.sops, ...newDefaults].map((s: Sop) => ({
+          ...s,
+          tasks: s.tasks.filter((t: SopTask) => !removedTaskIds.has(t.id)),
+        }));
+        setData({ ...seedData(), ...saved, sops: migratedSops, completions: pruneCompletions(saved.completions ?? []) });
       }
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
@@ -668,7 +712,7 @@ export default function HomeOpsPage() {
           {/* SOP sections in order */}
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {[...TODAY_ORDER, "custom" as SopCategory].flatMap(cat => (todaySops.get(cat) ?? []).map(sop => (
-              <SopTodaySection key={sop.id} sop={sop} mode={data.mode} completedIds={todayCompletion.completedIds} onToggle={toggleTask} />
+              <SopTodaySection key={sop.id} sop={sop} mode={data.mode} completedIds={todayCompletion.completedIds} allCompletions={data.completions} today={today} onToggle={toggleTask} />
             )))}
           </div>
 
