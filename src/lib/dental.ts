@@ -317,7 +317,8 @@ export type PlanRules = {
     primaryProvider: string;
     primaryProviderLocation: string;
     primaryProviderPhone: string;
-    primaryProviderInNetwork: boolean;
+    // "unknown" until confirmed with the new practice — don't guess network status
+    primaryProviderInNetwork: boolean | "unknown";
     customerServicePhone: string;
   };
 };
@@ -354,16 +355,19 @@ export const PLAN_RULES: PlanRules = {
     birthYear: 1994,
     memberId: "116637116 01",
     medicalId: "116637115 01",
-    localPatientId: "16822",
+    localPatientId: "unknown — new patient, verify with Smiles at Hunter Creek",
     groupNumber: "923382",
     planName: "HumanaDental PPO",
     network: "HumanaDental PPO / Traditional Preferred",
     medicalNetwork: "National POS-Open Access Plus",
     planYear: "calendar",
-    primaryProvider: "Laila Rizvi, DMD — My DentalCare Center",
-    primaryProviderLocation: "3708 Town Center Blvd, Suite B, Orlando, FL 32837",
-    primaryProviderPhone: "(407) 240-3372",
-    primaryProviderInNetwork: true,
+    // Switched providers as of the Aug 10, 2026 new-patient appointment.
+    // Historical records (2022) still correctly list Dr. Rizvi individually —
+    // this only changes the "current" provider shown on the reference card.
+    primaryProvider: "Smiles at Hunter Creek",
+    primaryProviderLocation: "Hunter Creek, Orlando, FL — exact address unknown, verify",
+    primaryProviderPhone: "unknown — verify",
+    primaryProviderInNetwork: "unknown",
     customerServicePhone: "1-800-626-1690",
   },
 };
@@ -1121,6 +1125,47 @@ export function nextAvailableDate(service: CoveredService, lastUsedDate: string 
       return null; // never resets
     case "as_needed":
       return null; // no limit
+  }
+}
+
+// Computes the correct lookback window for countServiceUsage() based on a
+// service's actual frequency type, as of a given date (defaults to today).
+//
+// This matters a lot: a "per calendar year" or "per N years" limit should
+// only count recent usage, not everything you've ever had done. Only true
+// lifetime limits (root canals, sealants) should look at your entire
+// history. Getting this wrong makes old, expired limits look permanently
+// "used up" — e.g. a 2022 full-mouth scaling (1 per 3 years) would
+// incorrectly block a 2026 estimate if this always looked at "lifetime".
+export function usageWindow(
+  frequency: FrequencyLimit | null,
+  asOf: string = new Date().toISOString().slice(0, 10)
+): { start: string; end: string } | "lifetime" {
+  if (!frequency) return "lifetime"; // no limit at all — window doesn't matter
+  switch (frequency.kind) {
+    case "per_calendar_year": {
+      const year = asOf.slice(0, 4);
+      return { start: `${year}-01-01`, end: `${year}-12-31` };
+    }
+    case "per_years": {
+      const d = new Date(asOf + "T00:00:00");
+      d.setFullYear(d.getFullYear() - frequency.years);
+      return { start: d.toISOString().slice(0, 10), end: asOf };
+    }
+    case "per_months": {
+      const d = new Date(asOf + "T00:00:00");
+      d.setMonth(d.getMonth() - frequency.months);
+      return { start: d.toISOString().slice(0, 10), end: asOf };
+    }
+    case "unserviceable_and_years": {
+      const d = new Date(asOf + "T00:00:00");
+      d.setFullYear(d.getFullYear() - frequency.years);
+      return { start: d.toISOString().slice(0, 10), end: asOf };
+    }
+    case "per_lifetime":
+    case "per_lifetime_per_tooth":
+    case "as_needed":
+      return "lifetime";
   }
 }
 

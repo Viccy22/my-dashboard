@@ -21,6 +21,7 @@ import {
   servicesByCategory,
   toothName,
   toothType,
+  usageWindow,
   type Appointment,
   type AppointmentStatus,
   type ClaimStatus,
@@ -135,6 +136,17 @@ const SEED_APPOINTMENTS: Appointment[] = [
     status: "completed",
     notes:
       'This appointment was noted as upcoming on the Nov 28, 2022 statement ("Victoria Henze 4/5/2023 @ 3:00pm"). No invoice, payment, or claim record was found to confirm it happened or what was done — verify with My DentalCare Center / Humana records.',
+    toothNumbers: [],
+    documentIds: [],
+  },
+  {
+    id: "seed-appt-7",
+    date: "2026-08-10",
+    provider: "Smiles at Hunter Creek",
+    location: "Hunter Creek, Orlando, FL — exact address unknown, verify",
+    reason: "New patient exam and cleaning — 10:00 AM",
+    status: "upcoming",
+    notes: "First appointment with new provider — Victoria switched dental practices in 2026. (No dedicated time field exists yet — time is noted in the reason.)",
     toothNumbers: [],
     documentIds: [],
   },
@@ -422,6 +434,17 @@ export default function DentalPage() {
     return Math.max(0, billedMinusInsurance - totalPayments);
   }, [dental.completedWork, dental.payments]);
 
+  // This calendar year's running total: billed vs. what insurance paid vs.
+  // what you paid out of pocket, from completed-work records dated this year.
+  const yearTotals = useMemo(() => {
+    const thisYear = dental.completedWork.filter((w) => w.date.slice(0, 4) === String(currentYear));
+    return {
+      billed: thisYear.reduce((s, w) => s + w.billedAmount, 0),
+      insurancePaid: thisYear.reduce((s, w) => s + w.insurancePaid, 0),
+      outOfPocket: thisYear.reduce((s, w) => s + w.patientPaid, 0),
+    };
+  }, [dental.completedWork, currentYear]);
+
   // ---- Generic add/update/delete helpers per entity ----
 
   function addAppointment(a: Appointment) {
@@ -510,7 +533,16 @@ export default function DentalPage() {
             { label: "Member ID", value: PLAN_RULES.patientInfo.memberId },
             { label: "Group / Plan Number", value: PLAN_RULES.patientInfo.groupNumber },
             { label: "Plan", value: `${PLAN_RULES.patientInfo.planName} — ${PLAN_RULES.patientInfo.network}` },
-            { label: "Primary Provider", value: `${PLAN_RULES.patientInfo.primaryProvider}${PLAN_RULES.patientInfo.primaryProviderInNetwork ? " (in-network)" : ""}` },
+            {
+              label: "Primary Provider",
+              value: `${PLAN_RULES.patientInfo.primaryProvider}${
+                PLAN_RULES.patientInfo.primaryProviderInNetwork === "unknown"
+                  ? " (network status unknown — verify)"
+                  : PLAN_RULES.patientInfo.primaryProviderInNetwork
+                  ? " (in-network)"
+                  : " (out-of-network)"
+              }`,
+            },
             { label: "Provider Location", value: `${PLAN_RULES.patientInfo.primaryProviderLocation} · ${PLAN_RULES.patientInfo.primaryProviderPhone}` },
             { label: "Customer Service", value: PLAN_RULES.patientInfo.customerServicePhone },
             { label: "Local Patient ID", value: PLAN_RULES.patientInfo.localPatientId },
@@ -534,6 +566,16 @@ export default function DentalPage() {
           <SummaryStat label="Est. Future Out-of-Pocket" value={fmtMoney(estimatedFutureOOP)} sub="accepted/proposed plans" />
           <SummaryStat label="Outstanding Balance" value={fmtMoney(outstandingBalance)} />
         </div>
+
+        <p style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-3)", margin: "0 0 10px" }}>
+          {currentYear} Running Total — Completed Work
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "14px", marginBottom: "16px" }}>
+          <SummaryStat label="Total Billed" value={fmtMoney(yearTotals.billed)} />
+          <SummaryStat label="Insurance Paid" value={fmtMoney(yearTotals.insurancePaid)} />
+          <SummaryStat label="Your Out-of-Pocket" value={fmtMoney(yearTotals.outOfPocket)} />
+        </div>
+
         <ProgressStat label="Annual Maximum" used={benefitUsage.annualMaxUsed} limit={PLAN_RULES.annualMax.amount} />
         <ProgressStat label="Deductible (In-Network)" used={benefitUsage.deductibleInUsed} limit={PLAN_RULES.deductible.individualInNetwork} />
         <ProgressStat label="Orthodontic Lifetime Max" used={benefitUsage.orthoLifetimeUsed} limit={PLAN_RULES.orthodonticLifetimeMax} />
@@ -848,7 +890,7 @@ function PerToothPanel({
             <div style={{ marginBottom: "14px" }}>
               <FieldLabel>Frequency-Limited Services Used On This Tooth</FieldLabel>
               {usedServicesOnTooth.map((s) => {
-                const count = countServiceUsage(s.id, toothNumber, "lifetime", dental.completedWork);
+                const count = countServiceUsage(s.id, toothNumber, usageWindow(s.frequency), dental.completedWork);
                 const exceeded = isFrequencyExceeded(s, count);
                 const lastUsed = filtered.completedWork.filter((w) => w.serviceId === s.id).sort((a, b) => b.date.localeCompare(a.date))[0];
                 const next = exceeded && lastUsed ? nextAvailableDate(s, lastUsed.date) : null;
@@ -1405,7 +1447,7 @@ function CoverageEstimatorCard({
 
   const result = useMemo(() => {
     if (!service || !fee) return null;
-    const usageCount = countServiceUsage(service.id, tooth, "lifetime", completedWork);
+    const usageCount = countServiceUsage(service.id, tooth, usageWindow(service.frequency), completedWork);
     return estimateCoverage(service, parseFloat(fee) || 0, tooth, patientAge, benefitUsage, usageCount, amalgamFee ? parseFloat(amalgamFee) : undefined);
   }, [service, fee, tooth, patientAge, benefitUsage, amalgamFee, completedWork]);
 
