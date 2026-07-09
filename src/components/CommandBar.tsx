@@ -17,6 +17,7 @@ const ALL_ITEMS: Item[] = [
   { label: "Garage",            sub: "Home",       href: "/garage" },
   { label: "Measurements",      sub: "Home",       href: "/measurements" },
   { label: "Health & Wellness", sub: "Personal",   href: "/health" },
+  { label: "Dental Health",     sub: "Personal",   href: "/dental" },
   { label: "Running",           sub: "Personal",   href: "/running" },
   { label: "School",            sub: "Personal",   href: "/school" },
   { label: "Vacations",         sub: "Plans",      href: "/vacations" },

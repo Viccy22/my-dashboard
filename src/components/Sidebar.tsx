@@ -190,6 +190,13 @@ function BookIcon() {
     </svg>
   );
 }
+function ToothIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <path d="M8 2c-1.8 0-3.2 1-3.5 2.5-.2 1-.1 2 .2 4 .2 1.5.5 3.3 1.1 4.7.3.7 1.2.7 1.5 0 .3-.8.5-1.8.7-2.7.1-.5.9-.5 1 0 .2.9.4 1.9.7 2.7.3.7 1.2.7 1.5 0 .6-1.4.9-3.2 1.1-4.7.3-2 .4-3 .2-4C11.2 3 9.8 2 8 2z" strokeLinejoin="round" />
+    </svg>
+  );
+}
 function RunIcon() {
   return (
     <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -240,6 +247,7 @@ const groups: NavGroup[] = [
     label: "Personal",
     items: [
       { href: "/health",   label: "Health & Wellness", icon: <HeartIcon />, built: true },
+      { href: "/dental",   label: "Dental Health",     icon: <ToothIcon />, built: true },
       { href: "/running",  label: "Running",            icon: <RunIcon />,   built: true },
       { href: "/school",   label: "School",             icon: <BookIcon />,  built: true },
     ],

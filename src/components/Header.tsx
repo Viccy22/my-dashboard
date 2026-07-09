@@ -14,6 +14,7 @@ const titles: Record<string, string> = {
   "/finances":     "Finances",
   "/subscriptions":"Subscriptions",
   "/health":       "Health & Wellness",
+  "/dental":       "Dental Health",
   "/running":      "Running",
   "/school":       "School",
   "/dogs":         "Dogs",
