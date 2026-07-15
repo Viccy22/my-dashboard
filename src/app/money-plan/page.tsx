@@ -465,6 +465,9 @@ export default function MoneyPlanPage() {
   const [status, setStatus] = useState<SaveStatus>("idle");
   const statusTimer = useRef<ReturnType<typeof setTimeout>>();
 
+  // Which section tab is showing (phase/warning banners above stay always visible)
+  const [tab, setTab] = useState<"today" | "planning" | "settings">("today");
+
   // ── Load ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -749,6 +752,22 @@ export default function MoneyPlanPage() {
         </div>
       )}
 
+      {/* ── Section tabs ── */}
+      <div style={{ display: "flex", gap: "6px", marginBottom: "14px", flexWrap: "wrap" }}>
+        {([
+          { key: "today",    label: "Today & This Month" },
+          { key: "planning", label: "Planning & Goals" },
+          { key: "settings", label: "Limits & Settings" },
+        ] as const).map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={tab === t.key ? "btn btn-primary" : "btn btn-secondary"}
+            style={{ fontSize: "13px", padding: "6px 16px" }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "today" && (
       <div className="dash-grid dash-main-aside" style={{ gap: "16px" }}>
 
         {/* ── LEFT COLUMN ─────────────────────────────────────────────────── */}
@@ -920,6 +939,41 @@ export default function MoneyPlanPage() {
               </div>
             )}
           </div>
+
+        </div>
+
+        {/* ── RIGHT COLUMN (tab: today) ───────────────────────────────────── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+          {/* LAYER A SUMMARY */}
+          <div className="card">
+            <p className="card-title">Layer A — Monthly Off-the-Top</p>
+            {!isPivot && <p style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "8px" }}>Starts {fmtDateFull(s.pivotDate)}</p>}
+            {[
+              { label: "Sinking Funds → HYSA", amount: s.sinkingMonthly, note: "Pooled account" },
+              { label: "Student Loan → Nelnet", amount: s.studentLoanMonthly, note: "Captures 6% 401k match — never skip", warn: true },
+              { label: "HSA Contribution", amount: s.hsaMonthly, note: "After Starter EF funded" },
+              { label: "Discretionary (stays in checking)", amount: s.discretionaryMonthly, note: "Personal $200 + fun $150 — not transferred" },
+            ].map(item => (
+              <div key={item.label} className="row" style={{ padding: "6px 8px" }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "13px", color: item.warn ? "var(--yellow)" : "var(--text)" }}>{item.label}</span>
+                  {item.note && <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: "1px 0 0" }}>{item.note}</p>}
+                </div>
+                <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600, color: "var(--accent)", fontSize: "13.5px" }}>{fmt$(item.amount)}</span>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </div>
+      )}
+
+      {tab === "planning" && (
+      <div className="dash-grid dash-main-aside" style={{ gap: "16px" }}>
+
+        {/* ── LEFT COLUMN (tab: planning) ──────────────────────────────────── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
           {/* GOAL WATERFALL */}
           <div className="card">
@@ -1203,28 +1257,8 @@ export default function MoneyPlanPage() {
 
         </div>
 
-        {/* ── RIGHT COLUMN ─────────────────────────────────────────────────── */}
+        {/* ── RIGHT COLUMN (tab: planning) ─────────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
-          {/* LAYER A SUMMARY */}
-          <div className="card">
-            <p className="card-title">Layer A — Monthly Off-the-Top</p>
-            {!isPivot && <p style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "8px" }}>Starts {fmtDateFull(s.pivotDate)}</p>}
-            {[
-              { label: "Sinking Funds → HYSA", amount: s.sinkingMonthly, note: "Pooled account" },
-              { label: "Student Loan → Nelnet", amount: s.studentLoanMonthly, note: "Captures 6% 401k match — never skip", warn: true },
-              { label: "HSA Contribution", amount: s.hsaMonthly, note: "After Starter EF funded" },
-              { label: "Discretionary (stays in checking)", amount: s.discretionaryMonthly, note: "Personal $200 + fun $150 — not transferred" },
-            ].map(item => (
-              <div key={item.label} className="row" style={{ padding: "6px 8px" }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: "13px", color: item.warn ? "var(--yellow)" : "var(--text)" }}>{item.label}</span>
-                  {item.note && <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: "1px 0 0" }}>{item.note}</p>}
-                </div>
-                <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600, color: "var(--accent)", fontSize: "13.5px" }}>{fmt$(item.amount)}</span>
-              </div>
-            ))}
-          </div>
 
           {/* SINKING FUND BUCKETS */}
           <div className="card">
@@ -1303,6 +1337,16 @@ export default function MoneyPlanPage() {
             )}
           </div>
 
+        </div>
+      </div>
+      )}
+
+      {tab === "settings" && (
+      <div className="dash-grid dash-main-aside" style={{ gap: "16px" }}>
+
+        {/* ── LEFT COLUMN (tab: settings) ──────────────────────────────────── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
           {/* CONTRIBUTION LIMITS */}
           <div className="card">
             <p className="card-title">Tax-Advantaged Limits — {year}</p>
@@ -1332,6 +1376,11 @@ export default function MoneyPlanPage() {
             })}
             <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "4px" }}>IRS limits change yearly — update each January. Click the limit value to edit.</p>
           </div>
+
+        </div>
+
+        {/* ── RIGHT COLUMN (tab: settings) ─────────────────────────────────── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
           {/* SETTINGS */}
           <div className="card">
@@ -1386,9 +1435,10 @@ export default function MoneyPlanPage() {
 
         </div>
       </div>
+      )}
 
-      {/* Annual reset checklist (Jan) */}
-      {today.slice(5, 10) <= "01-31" && (
+      {/* Annual reset checklist (Jan) — only shown on the Limits & Settings tab */}
+      {tab === "settings" && today.slice(5, 10) <= "01-31" && (
         <div style={{ marginTop: "16px", background: "var(--yellow-dim)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: "8px", padding: "14px 18px" }}>
           <p style={{ fontWeight: 600, color: "var(--yellow)", fontSize: "13px", margin: "0 0 8px" }}>📋 January Annual Reset Checklist</p>
           {["Update IRS contribution limits (HSA, Roth, 401k) — see Settings", "Confirm HDHP self-only vs family coverage", "Refresh sinking fund event costs if prices changed", "Re-baseline savings bucket balances against real accounts", "Review goal targets — adjust Core EF between $5,610 and $8,700 if needed"].map((item, i) => (

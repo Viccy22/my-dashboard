@@ -150,6 +150,12 @@ function seedFinances(): FinancesData {
   return { currentBalance: null, items: DEFAULT_ITEMS, transactions: [], overrides: [] };
 }
 
+// A little icon per bill category, just for quick visual scanning of the list.
+const CATEGORY_META: Record<string, string> = {
+  Income: "💰", Transport: "🚗", Household: "🏠", Pets: "🐾", Groceries: "🛒",
+  "Credit Card": "💳", BNPL: "🧾", Subscriptions: "🔁", Debt: "📉", Transfer: "🔀", Other: "📦",
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
@@ -345,6 +351,9 @@ export default function FinancesPage() {
 
   const [daysToShow,   setDaysToShow]   = useState(60);
   const [forecastDate, setForecastDate] = useState("");
+
+  // Which section tab is showing (Balance/Add Transaction stay always visible above these)
+  const [tab, setTab] = useState<"cashflow" | "savings" | "debt" | "bills">("cashflow");
 
   // Which row in the table is being edited
   const [editingRow,  setEditingRow]  = useState<EditingRow | null>(null);
@@ -827,8 +836,26 @@ export default function FinancesPage() {
         </div>
       )}
 
-      {/* ── Cash Flow Table ── */}
+      {/* ── Section tabs ── */}
       {hasBalance && (
+        <div style={{ display: "flex", gap: "6px", marginBottom: "14px", flexWrap: "wrap" }}>
+          {([
+            { key: "cashflow", label: "Cash Flow" },
+            { key: "savings",  label: "Savings & Goals" },
+            { key: "debt",     label: "Debt Tracker" },
+            { key: "bills",    label: "Recurring Bills" },
+          ] as const).map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={tab === t.key ? "btn btn-primary" : "btn btn-secondary"}
+              style={{ fontSize: "13px", padding: "6px 16px" }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Cash Flow Table ── */}
+      {tab === "cashflow" && hasBalance && (
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
             <div>
@@ -943,11 +970,9 @@ export default function FinancesPage() {
       )}
 
       {/* ── Savings ── */}
-      <details style={{ marginTop: "16px" }} open>
-        <summary style={{ fontSize: "12px", color: "var(--text-3)", cursor: "pointer", userSelect: "none", padding: "6px 0", fontWeight: 600 }}>
-          Savings &amp; Goals
-        </summary>
-        <div className="card" style={{ marginTop: "8px" }}>
+      {tab === "savings" && (
+        <div className="card">
+          <p className="card-title">Savings &amp; Goals</p>
 
           {/* Total savings balance */}
           <div style={{ marginBottom: "16px", paddingBottom: "14px", borderBottom: "1px solid var(--border)" }}>
@@ -1104,14 +1129,12 @@ export default function FinancesPage() {
             );
           })}
         </div>
-      </details>
+      )}
 
       {/* ── Debt Tracker ── */}
-      <details style={{ marginTop: "16px" }} open>
-        <summary style={{ fontSize: "12px", color: "var(--text-3)", cursor: "pointer", userSelect: "none", padding: "6px 0", fontWeight: 600 }}>
-          Debt Tracker &amp; Snowball Plan ({debtAccounts.filter(d => !d.deferred && d.balance > 0).length} active)
-        </summary>
-        <div className="card" style={{ marginTop: "8px" }}>
+      {tab === "debt" && (
+        <div className="card">
+          <p className="card-title">Debt Tracker &amp; Snowball Plan ({debtAccounts.filter(d => !d.deferred && d.balance > 0).length} active)</p>
           <p style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "14px" }}>
             Snowball method: pay minimums on all debts, put extra money toward the <strong>smallest balance first</strong>.
             Total monthly minimums: <strong style={{ color: "var(--text)" }}>{fmt$(debtAccounts.filter(d => !d.deferred).reduce((s, d) => s + d.minPayment, 0))}</strong>
@@ -1274,15 +1297,12 @@ export default function FinancesPage() {
             </div>
           )}
         </div>
-      </details>
+      )}
 
       {/* ── Recurring Bills ── */}
-      {hasBalance && (
-        <details style={{ marginTop: "16px" }} open>
-          <summary style={{ fontSize: "12px", color: "var(--text-3)", cursor: "pointer", userSelect: "none", padding: "6px 0", fontWeight: 600 }}>
-            Recurring bills &amp; income ({finances.items.filter(i => i.active && !i.id.startsWith("sub_")).length} active)
-          </summary>
-          <div className="card" style={{ marginTop: "8px" }}>
+      {tab === "bills" && hasBalance && (
+        <div className="card">
+          <p className="card-title">Recurring bills &amp; income ({finances.items.filter(i => i.active && !i.id.startsWith("sub_")).length} active)</p>
 
             {/* Add bill form */}
             {addingBill ? (
@@ -1415,8 +1435,10 @@ export default function FinancesPage() {
               const catItems = finances.items.filter(it => it.category === cat && !it.id.startsWith("sub_"));
               if (!catItems.length) return null;
               return (
-                <div key={cat} style={{ marginBottom: "14px" }}>
-                  <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "5px" }}>{cat}</p>
+                <details key={cat} style={{ marginBottom: "8px" }} open={cat === "Income"}>
+                  <summary style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", padding: "5px 0", cursor: "pointer", userSelect: "none" }}>
+                    {CATEGORY_META[cat] ?? ""} {cat} ({catItems.length})
+                  </summary>
                   {catItems.map(item => {
                     const s = item.schedule;
                     const schedLabel = s.type === "monthly"   ? `${s.dayOfMonth}th of month`
@@ -1454,7 +1476,7 @@ export default function FinancesPage() {
                       </div>
                     );
                   })}
-                </div>
+                </details>
               );
             })}
 
@@ -1472,8 +1494,7 @@ export default function FinancesPage() {
                 ))}
               </div>
             )}
-          </div>
-        </details>
+        </div>
       )}
     </div>
   );
