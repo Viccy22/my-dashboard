@@ -94,9 +94,29 @@ const SEED_DEBTS: DebtAccount[] = [
 const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s0",  name:"Bi-weekly paycheck",            amount:+1540,    schedule:{ type:"biweekly", anchorDate:"2026-07-01" }, category:"Income",       active:true, endDate:"2026-08-26" },
   { id:"s0b", name:"Bi-weekly paycheck",            amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",       active:true, startDate:"2026-09-01" },
-  { id:"s1",  name:"Car payment",                   amount:-460.11,  schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true, endDate:"2026-11-25" },
   { id:"s2",  name:"Car insurance",                 amount:-255,     schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true },
-  { id:"s3",  name:"OUC utility bill",              amount:-200,     schedule:{ type:"monthly",  dayOfMonth:14 }, category:"Household",   active:true },
+  // Car payment & OUC electric were converted from monthly lump sums to 4x/month
+  // weekly installments in July 2026 (easier to absorb per-paycheck). July itself
+  // is a mid-cycle catch-up: 3 OUC payments before the Aug 3 due date, 2 car
+  // payments before the Jul 25 due date. From August on, both settle into a
+  // clean 4-payments-per-month rhythm on the 1st/8th/15th/22nd.
+  { id:"ouc_catchup1", name:"OUC catch-up (1 of 3)",  amount:-144.01, schedule:{ type:"once", date:"2026-07-15" }, category:"Household", active:true },
+  { id:"ouc_catchup2", name:"OUC catch-up (2 of 3)",  amount:-144.01, schedule:{ type:"once", date:"2026-07-22" }, category:"Household", active:true },
+  { id:"ouc_catchup3", name:"OUC catch-up (3 of 3)",  amount:-144.01, schedule:{ type:"once", date:"2026-07-29" }, category:"Household", active:true },
+  { id:"car_catchup1", name:"Car payment catch-up (1 of 2)", amount:-230.06, schedule:{ type:"once", date:"2026-07-15" }, category:"Transport", active:true },
+  { id:"car_catchup2", name:"Car payment catch-up (2 of 2)", amount:-230.06, schedule:{ type:"once", date:"2026-07-22" }, category:"Transport", active:true },
+  // Ongoing 4x/month structure, starting August 2026. Car ends after the last
+  // November payment (loan payoff); OUC's amount is meant to be edited each
+  // month via the "OUC Monthly Bill" control (splits whatever you enter ÷ 4
+  // across these 4 items) since the real bill varies by season.
+  { id:"car_wk1", name:"Car payment (1 of 4)", amount:-115.03, schedule:{ type:"monthly", dayOfMonth:1  }, category:"Transport", active:true, startDate:"2026-08-01", endDate:"2026-11-22" },
+  { id:"car_wk2", name:"Car payment (2 of 4)", amount:-115.03, schedule:{ type:"monthly", dayOfMonth:8  }, category:"Transport", active:true, startDate:"2026-08-01", endDate:"2026-11-22" },
+  { id:"car_wk3", name:"Car payment (3 of 4)", amount:-115.03, schedule:{ type:"monthly", dayOfMonth:15 }, category:"Transport", active:true, startDate:"2026-08-01", endDate:"2026-11-22" },
+  { id:"car_wk4", name:"Car payment (4 of 4)", amount:-115.03, schedule:{ type:"monthly", dayOfMonth:22 }, category:"Transport", active:true, startDate:"2026-08-01", endDate:"2026-11-22" },
+  { id:"ouc_wk1", name:"OUC electric (1 of 4)", amount:-68.75, schedule:{ type:"monthly", dayOfMonth:1  }, category:"Household", active:true, startDate:"2026-08-01" },
+  { id:"ouc_wk2", name:"OUC electric (2 of 4)", amount:-68.75, schedule:{ type:"monthly", dayOfMonth:8  }, category:"Household", active:true, startDate:"2026-08-01" },
+  { id:"ouc_wk3", name:"OUC electric (3 of 4)", amount:-68.75, schedule:{ type:"monthly", dayOfMonth:15 }, category:"Household", active:true, startDate:"2026-08-01" },
+  { id:"ouc_wk4", name:"OUC electric (4 of 4)", amount:-68.75, schedule:{ type:"monthly", dayOfMonth:22 }, category:"Household", active:true, startDate:"2026-08-01" },
   { id:"s4",  name:"Zorro's diet food",             amount:-120,     schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Pets",        active:true },
   { id:"s5",  name:"Groceries",                     amount:-50,      schedule:{ type:"weekly",   dayOfWeek:6   }, category:"Groceries",   active:true },
   { id:"s6",  name:"Gas",                           amount:-40,      schedule:{ type:"monthly",  dayOfMonth:15 }, category:"Transport",   active:true },
@@ -392,6 +412,32 @@ export default function FinancesPage() {
           migrated = true;
         }
 
+        // Convert car payment & OUC electric from monthly lump sums to 4x/month
+        // weekly installments (July 2026 mid-cycle catch-up, then a clean
+        // 1st/8th/15th/22nd rhythm from August on).
+        if (f.items.some(it => it.id === "s1" || it.id === "s3")) {
+          f.items = f.items.filter(it => it.id !== "s1" && it.id !== "s3");
+          migrated = true;
+        }
+        const weeklyBillItems: RecurringItem[] = [
+          { id: "ouc_catchup1", name: "OUC catch-up (1 of 3)", amount: -144.01, schedule: { type: "once", date: "2026-07-15" }, category: "Household", active: true },
+          { id: "ouc_catchup2", name: "OUC catch-up (2 of 3)", amount: -144.01, schedule: { type: "once", date: "2026-07-22" }, category: "Household", active: true },
+          { id: "ouc_catchup3", name: "OUC catch-up (3 of 3)", amount: -144.01, schedule: { type: "once", date: "2026-07-29" }, category: "Household", active: true },
+          { id: "car_catchup1", name: "Car payment catch-up (1 of 2)", amount: -230.06, schedule: { type: "once", date: "2026-07-15" }, category: "Transport", active: true },
+          { id: "car_catchup2", name: "Car payment catch-up (2 of 2)", amount: -230.06, schedule: { type: "once", date: "2026-07-22" }, category: "Transport", active: true },
+          { id: "car_wk1", name: "Car payment (1 of 4)", amount: -115.03, schedule: { type: "monthly", dayOfMonth: 1 },  category: "Transport", active: true, startDate: "2026-08-01", endDate: "2026-11-22" },
+          { id: "car_wk2", name: "Car payment (2 of 4)", amount: -115.03, schedule: { type: "monthly", dayOfMonth: 8 },  category: "Transport", active: true, startDate: "2026-08-01", endDate: "2026-11-22" },
+          { id: "car_wk3", name: "Car payment (3 of 4)", amount: -115.03, schedule: { type: "monthly", dayOfMonth: 15 }, category: "Transport", active: true, startDate: "2026-08-01", endDate: "2026-11-22" },
+          { id: "car_wk4", name: "Car payment (4 of 4)", amount: -115.03, schedule: { type: "monthly", dayOfMonth: 22 }, category: "Transport", active: true, startDate: "2026-08-01", endDate: "2026-11-22" },
+          { id: "ouc_wk1", name: "OUC electric (1 of 4)", amount: -68.75, schedule: { type: "monthly", dayOfMonth: 1 },  category: "Household", active: true, startDate: "2026-08-01" },
+          { id: "ouc_wk2", name: "OUC electric (2 of 4)", amount: -68.75, schedule: { type: "monthly", dayOfMonth: 8 },  category: "Household", active: true, startDate: "2026-08-01" },
+          { id: "ouc_wk3", name: "OUC electric (3 of 4)", amount: -68.75, schedule: { type: "monthly", dayOfMonth: 15 }, category: "Household", active: true, startDate: "2026-08-01" },
+          { id: "ouc_wk4", name: "OUC electric (4 of 4)", amount: -68.75, schedule: { type: "monthly", dayOfMonth: 22 }, category: "Household", active: true, startDate: "2026-08-01" },
+        ];
+        for (const wi of weeklyBillItems) {
+          if (!f.items.some(it => it.id === wi.id)) { f.items = [...f.items, wi]; migrated = true; }
+        }
+
         setFinances(f);
         // Savings & debt
         setSavings(f.savings ?? { totalBalance: null, buckets: [] });
@@ -551,6 +597,20 @@ export default function FinancesPage() {
   const saveBillAmount = (itemId: string, newAmount: number) => {
     const updated = { ...finances, items: finances.items.map(it => it.id === itemId ? { ...it, amount: newAmount } : it) };
     setFinances(updated); setEditingBill(null); save(updated);
+  };
+
+  // ── OUC monthly bill → auto-splits across the 4 weekly OUC items ──────────
+  // OUC varies by season, so instead of editing 4 amounts separately, enter
+  // this month's real bill once and it divides by 4 across ouc_wk1..4.
+  const oucWeeklyIds = ["ouc_wk1", "ouc_wk2", "ouc_wk3", "ouc_wk4"];
+  const oucCurrentMonthly = Math.abs(finances.items.find(it => it.id === "ouc_wk1")?.amount ?? 0) * 4;
+  const [editingOuc, setEditingOuc] = useState(false);
+  const [oucInput, setOucInput] = useState("");
+  const saveOucMonthly = (newMonthlyTotal: number) => {
+    if (newMonthlyTotal <= 0) return;
+    const weekly = Math.round((newMonthlyTotal / 4) * 100) / 100;
+    const updated = { ...finances, items: finances.items.map(it => oucWeeklyIds.includes(it.id) ? { ...it, amount: -weekly } : it) };
+    setFinances(updated); setEditingOuc(false); save(updated);
   };
 
   // ── Edit transaction amount ───────────────────────────────────────────────
@@ -1324,6 +1384,33 @@ export default function FinancesPage() {
             <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "12px" }}>
               Pencil = change all future amounts. To edit just one occurrence, use the pencil in the cash flow table above.
             </p>
+
+            {oucCurrentMonthly > 0 && (
+              <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: "8px", padding: "10px 12px", marginBottom: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "12.5px", color: "var(--text-2)" }}>OUC monthly bill (varies by season):</span>
+                {editingOuc ? (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", background: "var(--surface-overlay)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 10px" }}>
+                      <span style={{ color: "var(--text-3)", fontSize: "13px", marginRight: "4px" }}>$</span>
+                      <input autoFocus style={{ background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: "13px", width: "80px", fontFamily: "inherit" }}
+                        type="number" step="0.01" min="0" placeholder={oucCurrentMonthly.toFixed(2)}
+                        value={oucInput}
+                        onChange={e => setOucInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") saveOucMonthly(parseFloat(oucInput) || 0); if (e.key === "Escape") setEditingOuc(false); }} />
+                    </div>
+                    <button className="btn btn-primary" style={{ fontSize: "11px", padding: "3px 10px" }} onClick={() => saveOucMonthly(parseFloat(oucInput) || 0)}>Save</button>
+                    <button className="btn btn-secondary" style={{ fontSize: "11px", padding: "3px 10px" }} onClick={() => setEditingOuc(false)}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)" }}>{fmt$(-oucCurrentMonthly)}</span>
+                    <span style={{ fontSize: "11.5px", color: "var(--text-3)" }}>→ {fmt$(-oucCurrentMonthly / 4)}/week × 4</span>
+                    <button className="btn-icon" title="Update this month's OUC bill" onClick={() => { setOucInput(""); setEditingOuc(true); }}><PencilIcon /></button>
+                  </>
+                )}
+              </div>
+            )}
+
             {["Income","Transport","Household","Pets","Groceries","Credit Card","BNPL","Subscriptions","Debt","Transfer","Other"].map(cat => {
               const catItems = finances.items.filter(it => it.category === cat && !it.id.startsWith("sub_"));
               if (!catItems.length) return null;
