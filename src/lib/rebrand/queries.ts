@@ -6,7 +6,7 @@
 // save — without ever clobbering another feature's data in the blob.
 // ============================================================================
 
-import type { RebrandData, WeightEntry } from "./types";
+import type { RebrandData, TaskDefinition, WeightEntry } from "./types";
 import {
   SEED_BRAND_CORE,
   SEED_REFERENCE,
@@ -42,15 +42,34 @@ function mergeById<T extends { id: string }>(existing: T[], seed: T[]): T[] {
   return [...existing, ...additions];
 }
 
+// One-time corrections to fields on EXISTING task rows, keyed to the seed
+// version they shipped in. mergeById only adds missing rows — it deliberately
+// never touches a row you already have (so your edits always win). A genuine
+// bug fix to a seeded task's schedule has to go here instead, gated so it only
+// ever applies once per version bump and never re-applies after that.
+const VERSIONED_PATCHES: { minVersion: number; taskId: string; patch: Partial<TaskDefinition> }[] = [
+  { minVersion: 2, taskId: "rb-breakfast", patch: { recurrence: "weekdays" } },
+];
+
+function applyVersionedPatches(tasks: TaskDefinition[], fromVersion: number): TaskDefinition[] {
+  const due = VERSIONED_PATCHES.filter((p) => fromVersion < p.minVersion);
+  if (due.length === 0) return tasks;
+  return tasks.map((t) => {
+    const patch = due.find((p) => p.taskId === t.id);
+    return patch ? { ...t, ...patch.patch } : t;
+  });
+}
+
 // Apply the seed to whatever is (or isn't) already saved. Pure — returns a new
 // RebrandData. Completions, weight log and weekly reviews are user data and are
 // never seeded, only carried through.
 export function applySeed(existing: RebrandData | undefined, rawData: DashData): RebrandData {
   const base = existing ?? emptyRebrand();
+  const priorVersion = base.seedVersion ?? 0;
 
   const merged: RebrandData = {
     ...base,
-    taskDefinitions: mergeById(base.taskDefinitions, SEED_TASKS),
+    taskDefinitions: applyVersionedPatches(mergeById(base.taskDefinitions, SEED_TASKS), priorVersion),
     referenceContent: mergeById(base.referenceContent, SEED_REFERENCE),
     brandCore: mergeById(base.brandCore, SEED_BRAND_CORE),
     roadmapItems: mergeById(base.roadmapItems, SEED_ROADMAP),

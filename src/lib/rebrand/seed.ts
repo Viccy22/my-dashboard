@@ -17,7 +17,7 @@ import type {
   TaskDefinition,
 } from "./types";
 
-export const SEED_VERSION = 1;
+export const SEED_VERSION = 2;
 
 // The one date the whole dental section counts down to (spec §11).
 export const DENTIST_DATE = "2026-08-10";
@@ -106,7 +106,7 @@ export const SEED_TASKS: TaskDefinition[] = [
     title: "Breakfast prep for Nicholas",
     detail: "Whatever the day needs — yogurt to the front of the fridge, bar on the counter, water bottle filled.",
     category: "morning",
-    recurrence: "daily",
+    recurrence: "weekdays",
     timeBlock: "early_am",
     estMinutes: 5,
   }),
