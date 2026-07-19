@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { MaintenanceData, tasksForToday, isCompletedToday, toggleCompletion, SEED_TASKS } from "@/lib/maintenance";
 import { RecurringItem, itemAppliesToDate } from "@/lib/finances";
+import HomeRebrandWidget from "@/components/rebrand/HomeRebrandWidget";
 
 type Priority = "high" | "medium" | "low";
 type Todo     = { id: string; text: string; done: boolean; dueDate?: string; priority?: Priority };
@@ -753,6 +754,11 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* The Rebrand — today's checklist, directly below the existing home screen (spec §16) */}
+      <div style={{ marginTop: "16px" }}>
+        <HomeRebrandWidget />
       </div>
     </>
   );

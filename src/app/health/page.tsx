@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import Link from "next/link";
 
 type OuraDay = {
   date: string;
@@ -112,9 +113,6 @@ export default function HealthPage() {
   const [loading,  setLoading]  = useState(true);
   const [tab,      setTab]      = useState<"skincare" | "log" | "weight" | "oura">("skincare");
   const [weights,  setWeights]  = useState<WeightEntry[]>([]);
-  const [wInput,   setWInput]   = useState("");
-  const [wNote,    setWNote]    = useState("");
-  const [wDate,    setWDate]    = useState(todayStr());
   const [oura,     setOura]     = useState<OuraDay[]>([]);
   const [ouraLoad, setOuraLoad] = useState(false);
   const [ouraErr,  setOuraErr]  = useState<string | null>(null);
@@ -172,32 +170,8 @@ export default function HealthPage() {
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
   }, []);
 
-  const saveWeights = useCallback(async (updated: WeightEntry[]) => {
-    setStatus("saving");
-    if (timer.current) clearTimeout(timer.current);
-    const newData = { ...rawDataRef.current, weight: { entries: updated } };
-    rawDataRef.current = newData;
-    try {
-      const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
-      if (!res.ok) throw new Error();
-      setStatus("saved");
-    } catch { setStatus("error"); }
-    finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
-  }, []);
-
-  const logWeight = () => {
-    const val = parseFloat(wInput);
-    if (!val || val <= 0 || !wDate) return;
-    const entry: WeightEntry = { id: crypto.randomUUID(), date: wDate, weight: val, note: wNote.trim() };
-    const updated = [...weights.filter(w => w.date !== wDate), entry].sort((a, b) => b.date.localeCompare(a.date));
-    setWeights(updated); saveWeights(updated);
-    setWInput(""); setWNote(""); setWDate(todayStr());
-  };
-
-  const deleteWeight = (id: string) => {
-    const updated = weights.filter(w => w.id !== id);
-    setWeights(updated); saveWeights(updated);
-  };
+  // Weight is now read-only here — new weigh-ins live in The Rebrand (Body). The
+  // history below still renders from the migrated `data.weight` entries.
 
   // ── Skincare helpers ──────────────────────────────────────────────────────
 
@@ -506,36 +480,23 @@ export default function HealthPage() {
               </div>
             )}
 
-            {/* Log new entry */}
-            <div className="card" style={{ marginBottom: "16px" }}>
-              <p className="card-title" style={{ margin: "0 0 12px" }}>Log weight</p>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                <div style={{ flex: "0 0 130px" }}>
-                  <label style={{ fontSize: "11px", color: "var(--text-3)", display: "block", marginBottom: "3px" }}>Date</label>
-                  <input className="input" type="date" value={wDate} onChange={e => setWDate(e.target.value)} />
-                </div>
-                <div style={{ flex: "0 0 120px" }}>
-                  <label style={{ fontSize: "11px", color: "var(--text-3)", display: "block", marginBottom: "3px" }}>Weight (lbs)</label>
-                  <input className="input" type="number" step="0.1" min="0" placeholder="135.5"
-                    value={wInput} onChange={e => setWInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && logWeight()} />
-                </div>
-                <div style={{ flex: "1 1 140px" }}>
-                  <label style={{ fontSize: "11px", color: "var(--text-3)", display: "block", marginBottom: "3px" }}>Note (optional)</label>
-                  <input className="input" placeholder="After workout, morning…" value={wNote}
-                    onChange={e => setWNote(e.target.value)} onKeyDown={e => e.key === "Enter" && logWeight()} />
-                </div>
-                <div style={{ display: "flex", alignItems: "flex-end" }}>
-                  <button className="btn btn-primary" onClick={logWeight}>Log</button>
-                </div>
-              </div>
+            {/* Weight now lives in The Rebrand — this tab is read-only history so
+                nothing is stranded, but new weigh-ins go there to keep one source
+                of truth (your old entries were migrated over automatically). */}
+            <div className="card" style={{ marginBottom: "16px", background: "var(--accent-dim)", borderColor: "var(--accent)" }}>
+              <p style={{ fontSize: "13px", color: "var(--text)", margin: "0 0 10px", lineHeight: 1.5 }}>
+                Weight tracking moved to <strong>The Rebrand → Body</strong>, where it&apos;s charted against the projection curve. Your history below stays here for reference; log new weigh-ins there.
+              </p>
+              <Link href="/rebrand/body" className="btn btn-primary" style={{ fontSize: "13px" }}>
+                Log weight in The Rebrand →
+              </Link>
             </div>
 
-            {/* History */}
+            {/* History (read-only) */}
             {weights.length > 0 && (
               <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "110px 90px 1fr 28px", gap: "0 8px", padding: "8px 16px", borderBottom: "1px solid var(--border)" }}>
-                  {["Date", "Weight", "Note", ""].map(h => (
+                <div style={{ display: "grid", gridTemplateColumns: "110px 90px 1fr", gap: "0 8px", padding: "8px 16px", borderBottom: "1px solid var(--border)" }}>
+                  {["Date", "Weight", "Note"].map(h => (
                     <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</span>
                   ))}
                 </div>
@@ -543,23 +504,20 @@ export default function HealthPage() {
                   const nextW = weights[i + 1];
                   const chg = nextW ? w.weight - nextW.weight : null;
                   return (
-                    <div key={w.id} style={{ display: "grid", gridTemplateColumns: "110px 90px 1fr 28px", gap: "0 8px", padding: "9px 16px", borderTop: i === 0 ? "none" : "1px solid var(--border)", alignItems: "center" }}
-                      onMouseEnter={e => e.currentTarget.querySelectorAll<HTMLElement>(".w-del").forEach(el => el.style.opacity = "1")}
-                      onMouseLeave={e => e.currentTarget.querySelectorAll<HTMLElement>(".w-del").forEach(el => el.style.opacity = "0")}>
+                    <div key={w.id} style={{ display: "grid", gridTemplateColumns: "110px 90px 1fr", gap: "0 8px", padding: "9px 16px", borderTop: i === 0 ? "none" : "1px solid var(--border)", alignItems: "center" }}>
                       <span style={{ fontSize: "12.5px", color: "var(--text-3)" }}>{new Date(w.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                       <span style={{ fontSize: "14px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                         {w.weight} lbs
                         {chg !== null && <span style={{ fontSize: "11px", fontWeight: 400, marginLeft: "6px", color: chg < 0 ? "var(--green)" : chg > 0 ? "var(--red)" : "var(--text-3)" }}>{chg > 0 ? "+" : ""}{chg.toFixed(1)}</span>}
                       </span>
                       <span style={{ fontSize: "12.5px", color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.note}</span>
-                      <button className="btn-icon w-del" style={{ opacity: 0 }} onClick={() => deleteWeight(w.id)}><XIcon /></button>
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {weights.length === 0 && <p className="empty">No weight logged yet. Add your first entry above.</p>}
+            {weights.length === 0 && <p className="empty">No weight history here. Log weigh-ins in The Rebrand → Body.</p>}
           </div>
         );
       })()}

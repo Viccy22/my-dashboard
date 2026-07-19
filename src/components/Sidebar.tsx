@@ -207,12 +207,21 @@ function RunIcon() {
     </svg>
   );
 }
+function SparkIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <path d="M8 1.5l1.4 3.7L13 6.5l-3.6 1.3L8 11.5 6.6 7.8 3 6.5l3.6-1.3L8 1.5z" strokeLinejoin="round" />
+      <path d="M12.5 10.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6.6-1.6z" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 const groups: NavGroup[] = [
   {
     label: "Overview",
     items: [
       { href: "/", label: "Home", icon: <LayoutIcon />, built: true },
+      { href: "/rebrand", label: "The Rebrand", icon: <SparkIcon />, built: true },
     ],
   },
   {
