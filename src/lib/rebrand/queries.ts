@@ -49,6 +49,40 @@ function mergeById<T extends { id: string }>(existing: T[], seed: T[]): T[] {
 // ever applies once per version bump and never re-applies after that.
 const VERSIONED_PATCHES: { minVersion: number; taskId: string; patch: Partial<TaskDefinition> }[] = [
   { minVersion: 2, taskId: "rb-breakfast", patch: { recurrence: "weekdays" } },
+  {
+    minVersion: 3,
+    taskId: "rb-ac-am",
+    patch: {
+      title: "Hook the AC to the bucket",
+      detail: "Connect the living-room AC's drain hose to the bucket for the day. No emptying — that happens when it's closed up at night.",
+    },
+  },
+  {
+    minVersion: 3,
+    taskId: "rb-ac-pm",
+    patch: {
+      title: "Close the AC + empty the bucket",
+      detail: "Disconnect the drain hose and close up the AC for the night. Empty the bucket now — this is the only emptying of the day.",
+      estMinutes: 2,
+    },
+  },
+  {
+    minVersion: 3,
+    taskId: "rb-retinoid",
+    patch: {
+      title: "Retinoid (tret) — buffered",
+      detail:
+        "Tue + Sat to start. Buffered: moisturiser FIRST, retinoid on top. Only increase frequency after 6 weeks with no irritation. Going straight to daily is what causes the irritation that makes people quit. Never the same night as the azelaic acid — the two react.",
+    },
+  },
+  {
+    minVersion: 3,
+    taskId: "rb-night-routine",
+    patch: {
+      detail:
+        "Same order every night, 20:45:\n1. Birth control (anchored first so it survives a bad night)\n2. Brush 2 min + floss (permanent — night matters more than morning)\n3. Cleanse, twice if you wore makeup or SPF\n4. Prescription night — retinoid Tue/Sat OR azelaic acid Mon/Wed/Fri, never both the same night (tracked separately)\n5. Moisturiser, then occlusive on dry patches\n6. Feet: urea cream + cotton socks\n7. Sleep vitamins\nOne of the five non-negotiables.",
+    },
+  },
 ];
 
 function applyVersionedPatches(tasks: TaskDefinition[], fromVersion: number): TaskDefinition[] {

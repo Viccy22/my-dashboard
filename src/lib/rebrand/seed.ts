@@ -17,7 +17,7 @@ import type {
   TaskDefinition,
 } from "./types";
 
-export const SEED_VERSION = 2;
+export const SEED_VERSION = 3;
 
 // The one date the whole dental section counts down to (spec §11).
 export const DENTIST_DATE = "2026-08-10";
@@ -121,8 +121,8 @@ export const SEED_TASKS: TaskDefinition[] = [
   }),
   def({
     id: "rb-ac-am",
-    title: "Empty the AC bucket (morning)",
-    detail: "The living-room AC drains into a bucket. Check and empty it.",
+    title: "Hook the AC to the bucket",
+    detail: "Connect the living-room AC's drain hose to the bucket for the day. No emptying — that happens when it's closed up at night.",
     category: "home",
     zone: "living_room",
     recurrence: "daily",
@@ -439,13 +439,13 @@ export const SEED_TASKS: TaskDefinition[] = [
   }),
   def({
     id: "rb-ac-pm",
-    title: "Empty the AC bucket (evening)",
-    detail: "Second AC bucket check of the day.",
+    title: "Close the AC + empty the bucket",
+    detail: "Disconnect the drain hose and close up the AC for the night. Empty the bucket now — this is the only emptying of the day.",
     category: "home",
     zone: "living_room",
     recurrence: "daily",
     timeBlock: "evening",
-    estMinutes: 1,
+    estMinutes: 2,
   }),
   def({
     id: "rb-trash",
@@ -458,9 +458,9 @@ export const SEED_TASKS: TaskDefinition[] = [
   }),
   def({
     id: "rb-retinoid",
-    title: "Retinoid — buffered",
+    title: "Retinoid (tret) — buffered",
     detail:
-      "Tue + Sat to start. Buffered: moisturiser FIRST, retinoid on top. Only increase frequency after 6 weeks with no irritation. Going straight to daily is what causes the irritation that makes people quit.",
+      "Tue + Sat to start. Buffered: moisturiser FIRST, retinoid on top. Only increase frequency after 6 weeks with no irritation. Going straight to daily is what causes the irritation that makes people quit. Never the same night as the azelaic acid — the two react.",
     category: "beauty",
     recurrence: "specific_days",
     daysOfWeek: [2, 6],
@@ -468,10 +468,21 @@ export const SEED_TASKS: TaskDefinition[] = [
     estMinutes: 2,
   }),
   def({
+    id: "rb-azelaic",
+    title: "Azelaic acid",
+    detail:
+      "Mon + Wed + Fri — prescription, not every day. Never the same night as the retinoid (Tue/Sat) — the two react.",
+    category: "beauty",
+    recurrence: "specific_days",
+    daysOfWeek: [1, 3, 5],
+    timeBlock: "evening",
+    estMinutes: 2,
+  }),
+  def({
     id: "rb-night-routine",
     title: "Night routine — all 7 steps",
     detail:
-      "Same order every night, 20:45:\n1. Birth control (anchored first so it survives a bad night)\n2. Brush 2 min + floss (permanent — night matters more than morning)\n3. Cleanse, twice if you wore makeup or SPF\n4. Retinoid — only Tue + Sat, buffered (tracked separately)\n5. Moisturiser, then occlusive on dry patches\n6. Feet: urea cream + cotton socks\n7. Sleep vitamins\nOne of the five non-negotiables.",
+      "Same order every night, 20:45:\n1. Birth control (anchored first so it survives a bad night)\n2. Brush 2 min + floss (permanent — night matters more than morning)\n3. Cleanse, twice if you wore makeup or SPF\n4. Prescription night — retinoid Tue/Sat OR azelaic acid Mon/Wed/Fri, never both the same night (tracked separately)\n5. Moisturiser, then occlusive on dry patches\n6. Feet: urea cream + cotton socks\n7. Sleep vitamins\nOne of the five non-negotiables.",
     category: "evening",
     recurrence: "daily",
     timeBlock: "evening",
