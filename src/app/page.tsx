@@ -95,7 +95,6 @@ function CheckItem({ label, done, onToggle, accent }: { label: string; done: boo
 
 export default function HomePage() {
   const [data,    setData]    = useState<DashData>({});
-  const [todos,   setTodos]   = useState<Todo[]>([]);
   const [events,  setEvents]  = useState<CalEvent[]>([]);
   const [lists,   setLists]   = useState<Lists>({ shopping: [], errands: [] });
   const [skincare,setSkincare]= useState<SkincareEntry[]>([]);
@@ -111,7 +110,6 @@ export default function HomePage() {
   const [weekRuns,     setWeekRuns]     = useState<{ miles: number; count: number }>({ miles: 0, count: 0 });
   const [birthdaysToday, setBirthdaysToday] = useState<Contact[]>([]);
   const [upcomingHolidays, setUpcomingHolidays] = useState<(HolidayItem & { days: number })[]>([]);
-  const [newTask,    setNewTask]    = useState("");
   const [newTitle,   setNewTitle]   = useState("");
   const [newDate,    setNewDate]    = useState("");
   const [newTime,    setNewTime]    = useState("");
@@ -128,7 +126,6 @@ export default function HomePage() {
       .then(res => {
         const d: DashData = res.data ?? {};
         setData(d);
-        setTodos(d.todos ?? []);
         setEvents(d.events ?? []);
         setBalance(d.finances?.currentBalance ?? null);
         setDogs(d.dogs?.dogs ?? []);
@@ -185,21 +182,6 @@ export default function HomePage() {
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
   }, []);
 
-  // Todos
-  const addTask = () => {
-    const text = newTask.trim(); if (!text) return;
-    const updated = [...todos, { id: crypto.randomUUID(), text, done: false }];
-    setTodos(updated); setNewTask(""); const d = { ...data, todos: updated }; setData(d); save(d);
-  };
-  const toggleTask = (id: string) => {
-    const updated = todos.map(t => t.id === id ? { ...t, done: !t.done } : t);
-    setTodos(updated); const d = { ...data, todos: updated }; setData(d); save(d);
-  };
-  const deleteTask = (id: string) => {
-    const updated = todos.filter(t => t.id !== id);
-    setTodos(updated); const d = { ...data, todos: updated }; setData(d); save(d);
-  };
-
   // Events
   const addEvent = () => {
     if (!newTitle.trim() || !newDate) return;
@@ -255,10 +237,6 @@ export default function HomePage() {
 
   if (loading) return <p className="empty" style={{ padding: "32px 0" }}>Loading…</p>;
 
-  const pending  = todos.filter(t => !t.done);
-  const done     = todos.filter(t => t.done);
-  const overdue  = todos.filter(t => !t.done && t.dueDate && t.dueDate < today);
-  const dueToday = todos.filter(t => !t.done && t.dueDate === today);
   const upcoming = events.filter(e => e.date >= today);
   const past     = events.filter(e => e.date <  today);
 
@@ -292,36 +270,6 @@ export default function HomePage() {
 
         {/* ── Left column ── */}
         <div className="dash-grid" style={{ gap: "16px" }}>
-
-          {/* Tasks */}
-          <div className="card">
-            <p className="card-title">Tasks {pending.length > 0 && <span style={{ marginLeft: "8px", background: "var(--accent-dim)", color: "var(--accent-text)", borderRadius: "99px", padding: "1px 7px", fontSize: "11px", fontWeight: 600, textTransform: "none", letterSpacing: 0 }}>{pending.length}</span>}</p>
-            <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-              <input className="input" placeholder="Add a task…" value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} />
-              <button className="btn btn-primary" onClick={addTask} style={{ padding: "8px 14px" }}>Add</button>
-            </div>
-            {pending.length === 0 && done.length === 0 && <p className="empty">No tasks yet.</p>}
-            {pending.map(t => (
-              <div key={t.id} className="row">
-                <input type="checkbox" className="checkbox" checked={false} onChange={() => toggleTask(t.id)} />
-                <span style={{ flex: 1, fontSize: "13.5px", color: "var(--text)" }}>{t.text}</span>
-                <button className="btn-icon" onClick={() => deleteTask(t.id)}><XIcon /></button>
-              </div>
-            ))}
-            {done.length > 0 && (
-              <>
-                <div className="divider" />
-                <p style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "4px" }}>Completed</p>
-                {done.map(t => (
-                  <div key={t.id} className="row done">
-                    <input type="checkbox" className="checkbox" checked={true} onChange={() => toggleTask(t.id)} />
-                    <span style={{ flex: 1, fontSize: "13.5px", color: "var(--text)", textDecoration: "line-through" }}>{t.text}</span>
-                    <button className="btn-icon" onClick={() => deleteTask(t.id)}><XIcon /></button>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
 
           {/* The Rebrand — today's checklist */}
           <HomeRebrandWidget />
@@ -466,10 +414,6 @@ export default function HomePage() {
           <div className="card">
             <p className="card-title">Overview</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {overdue.length > 0 && <StatBadge label="Overdue tasks" value={overdue.length} color="red" />}
-              {dueToday.length > 0 && <StatBadge label="Due today" value={dueToday.length} color="yellow" />}
-              <StatRow label="Tasks pending"   value={pending.length} />
-              <StatRow label="Tasks done"      value={done.length} dim />
               <StatRow label="Upcoming events" value={upcoming.length} />
             </div>
           </div>
@@ -712,14 +656,6 @@ function StatRow({ label, value, dim }: { label: string; value: number; dim?: bo
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <span style={{ fontSize: "13px", color: dim ? "var(--text-3)" : "var(--text-2)" }}>{label}</span>
       <span style={{ fontSize: "13px", fontWeight: 600, color: dim ? "var(--text-3)" : "var(--text)", fontVariantNumeric: "tabular-nums" }}>{value}</span>
-    </div>
-  );
-}
-function StatBadge({ label, value, color }: { label: string; value: number; color: "red" | "yellow" }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: `var(--${color}-dim)`, borderRadius: "6px", padding: "6px 10px" }}>
-      <span style={{ fontSize: "13px", color: `var(--${color})`, fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: "13px", fontWeight: 700, color: `var(--${color})` }}>{value}</span>
     </div>
   );
 }
