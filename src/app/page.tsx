@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { MaintenanceData, tasksForToday, isCompletedToday, toggleCompletion, SEED_TASKS } from "@/lib/maintenance";
+import { MaintenanceData } from "@/lib/maintenance";
 import { RecurringItem, itemAppliesToDate } from "@/lib/finances";
 import HomeRebrandWidget from "@/components/rebrand/HomeRebrandWidget";
 
@@ -97,7 +97,6 @@ export default function HomePage() {
   const [data,    setData]    = useState<DashData>({});
   const [todos,   setTodos]   = useState<Todo[]>([]);
   const [events,  setEvents]  = useState<CalEvent[]>([]);
-  const [maint,   setMaint]   = useState<MaintenanceData>({ tasks: [], completions: [] });
   const [lists,   setLists]   = useState<Lists>({ shopping: [], errands: [] });
   const [skincare,setSkincare]= useState<SkincareEntry[]>([]);
   const [status,  setStatus]  = useState<SaveStatus>("idle");
@@ -164,12 +163,6 @@ export default function HomePage() {
         setUpcomingHolidays(holidayList);
         setLists(d.lists ?? { shopping: [], errands: [] });
         setSkincare(d.health?.skincare ?? []);
-        const saved = d.maintenance;
-        if (!saved?.tasks?.length || (saved.tasks[0] as unknown as { frequency?: string }).frequency) {
-          setMaint({ tasks: SEED_TASKS, completions: [] });
-        } else {
-          setMaint(saved as MaintenanceData);
-        }
       })
       .catch(() => setStatus("error"))
       .finally(() => setLoading(false));
@@ -220,11 +213,6 @@ export default function HomePage() {
     setEvents(updated); const d = { ...data, events: updated }; setData(d); save(d);
   };
 
-  // Maintenance completion
-  const toggleMaint = (taskId: string) => {
-    const updated = { ...maint, completions: toggleCompletion(maint.completions, taskId, today) };
-    setMaint(updated); const d = { ...data, maintenance: updated }; setData(d); save(d);
-  };
 
   // Skincare completion for today
   const toggleSkincare = (field: keyof AMRoutine | keyof PMRoutine, period: "am" | "pm") => {
@@ -274,11 +262,6 @@ export default function HomePage() {
   const upcoming = events.filter(e => e.date >= today);
   const past     = events.filter(e => e.date <  today);
 
-  const todayMaint  = tasksForToday(maint.tasks, today);
-  const maintDone   = todayMaint.filter(t => isCompletedToday(maint.completions, t.id, today)).length;
-  const morningTasks = todayMaint.filter(t => t.period === "morning");
-  const eveningTasks = todayMaint.filter(t => t.period === "evening");
-  const otherTasks   = todayMaint.filter(t => t.period !== "morning" && t.period !== "evening");
 
   const todaySkincare = skincare.find(e => e.date === today);
   const tretTonight   = isTretTonight(skincare, today);
@@ -340,43 +323,8 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Today's cleaning */}
-          {todayMaint.length > 0 && (
-            <div className="card">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-                <p className="card-title" style={{ margin: 0 }}>Cleaning today</p>
-                <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{maintDone}/{todayMaint.length}</span>
-              </div>
-              <div style={{ height: "4px", borderRadius: "99px", background: "var(--surface-raised)", marginBottom: "12px", overflow: "hidden" }}>
-                <div style={{ height: "100%", borderRadius: "99px", background: "var(--green)", width: `${todayMaint.length ? (maintDone / todayMaint.length) * 100 : 0}%`, transition: "width 0.3s" }} />
-              </div>
-              {morningTasks.length > 0 && (
-                <>
-                  <p style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 6px" }}>Morning</p>
-                  {morningTasks.map(t => (
-                    <CheckItem key={t.id} label={t.title} done={isCompletedToday(maint.completions, t.id, today)} onToggle={() => toggleMaint(t.id)} />
-                  ))}
-                </>
-              )}
-              {eveningTasks.length > 0 && (
-                <>
-                  <p style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "10px 0 6px" }}>Evening</p>
-                  {eveningTasks.map(t => (
-                    <CheckItem key={t.id} label={t.title} done={isCompletedToday(maint.completions, t.id, today)} onToggle={() => toggleMaint(t.id)} />
-                  ))}
-                </>
-              )}
-              {otherTasks.length > 0 && (
-                <>
-                  <p style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "10px 0 6px" }}>Also today</p>
-                  {otherTasks.map(t => (
-                    <CheckItem key={t.id} label={t.title} done={isCompletedToday(maint.completions, t.id, today)} onToggle={() => toggleMaint(t.id)} />
-                  ))}
-                </>
-              )}
-              <a href="/maintenance" style={{ fontSize: "12px", color: "var(--accent)", textDecoration: "none", display: "block", marginTop: "10px" }}>View all →</a>
-            </div>
-          )}
+          {/* The Rebrand — today's checklist */}
+          <HomeRebrandWidget />
 
           {/* Skincare today */}
           <div className="card">
@@ -523,7 +471,6 @@ export default function HomePage() {
               <StatRow label="Tasks pending"   value={pending.length} />
               <StatRow label="Tasks done"      value={done.length} dim />
               <StatRow label="Upcoming events" value={upcoming.length} />
-              {todayMaint.length > 0 && <StatRow label="Cleaning tasks today" value={todayMaint.length - maintDone} />}
             </div>
           </div>
 
@@ -756,10 +703,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* The Rebrand — today's checklist, directly below the existing home screen (spec §16) */}
-      <div style={{ marginTop: "16px" }}>
-        <HomeRebrandWidget />
-      </div>
     </>
   );
 }
