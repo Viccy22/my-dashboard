@@ -244,7 +244,7 @@ function generateCashFlow(
 
     // Remove items that were moved to a different date
     const movedAwayItemIds = dateOverrides?.filter(d => d.scheduledDate === dateStr).map(d => d.itemId) ?? [];
-    const filteredHits = hits.filter(h => h.source.type !== "recurring" || !movedAwayItemIds.includes((h.source as any).itemId));
+    const filteredHits = hits.filter(h => h.source.type !== "recurring" || !movedAwayItemIds.includes(h.source.type === "recurring" ? h.source.itemId : ""));
 
     // Logged transactions
     for (const t of transactions.filter(t => t.date === dateStr)) {
@@ -1042,9 +1042,12 @@ export default function FinancesPage() {
                             onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
                             onMouseLeave={e => (e.currentTarget.style.opacity = "0.3")}
                             onClick={() => {
-                              setEditingDateOverride({ itemId: (row.source as any).itemId, scheduledDate: row.date });
-                              const existing = (finances.dateOverrides ?? []).find(d => d.itemId === (row.source as any).itemId && d.scheduledDate === row.date);
-                              setDateOverrideInput(existing?.newDate ?? "");
+                              if (row.source.type === "recurring") {
+                                const itemId = row.source.itemId;
+                                setEditingDateOverride({ itemId, scheduledDate: row.date });
+                                const existing = (finances.dateOverrides ?? []).find(d => d.itemId === itemId && d.scheduledDate === row.date);
+                                setDateOverrideInput(existing?.newDate ?? "");
+                              }
                             }}>
                             📅
                           </button>
