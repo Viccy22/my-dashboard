@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { MaintenanceData } from "@/lib/maintenance";
 import { RecurringItem, itemAppliesToDate } from "@/lib/finances";
 import HomeRebrandWidget from "@/components/rebrand/HomeRebrandWidget";
+import HomeSavingsWidget from "@/components/HomeSavingsWidget";
 
 type Priority = "high" | "medium" | "low";
 type Todo     = { id: string; text: string; done: boolean; dueDate?: string; priority?: Priority };
@@ -273,6 +274,9 @@ export default function HomePage() {
 
           {/* The Rebrand — today's checklist */}
           <HomeRebrandWidget />
+
+          {/* Savings Goals */}
+          <HomeSavingsWidget />
 
           {/* Skincare today */}
           <div className="card">
