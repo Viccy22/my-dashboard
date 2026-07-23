@@ -135,6 +135,8 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,      schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true, endDate:"2026-08-31" },
   { id:"s11", name:"Affirm Plan 2",                 amount:-28.55,   schedule:{ type:"monthly",  dayOfMonth:2  }, category:"BNPL",        active:true, endDate:"2027-03-02" },
   { id:"s12", name:"Affirm Plan 3",                 amount:-53.81,   schedule:{ type:"monthly",  dayOfMonth:25 }, category:"BNPL",        active:true, endDate:"2027-04-25" },
+  { id:"s_amazon1", name:"Amazon Pay-in-4 Plan 1", amount:-32.50,   schedule:{ type:"once",     date:"2026-07-30" }, category:"BNPL",        active:true },
+  { id:"s_amazon2", name:"Amazon Pay-in-4 Plan 2", amount:-31.13,   schedule:{ type:"once",     date:"2026-08-06" }, category:"BNPL",        active:true },
   { id:"s13", name:"Disney Annual Pass",            amount:-67,      schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Subscriptions",active:true },
   { id:"s14", name:"Fitness membership",            amount:-40,      schedule:{ type:"monthly",  dayOfMonth:22 }, category:"Subscriptions",active:true },
   { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-08-31" },
