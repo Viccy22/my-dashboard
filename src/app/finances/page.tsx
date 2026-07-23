@@ -59,6 +59,29 @@ type DebtAccount = {
   deferred?: boolean; deferredUntil?: string; notes?: string;
 };
 
+type BNPLInstallment = {
+  date: string;
+  amount: number;
+  isEstimated?: boolean;
+};
+
+type BNPLPlan = {
+  id: string;
+  merchant: string;
+  provider: string;
+  originalAmount: number;
+  paidToDate: number;
+  remainingBalance: number;
+  regularInstallment: number;
+  paymentsRemaining: number;
+  totalInstallments: number;
+  nextDueDate: string;
+  finalPaymentDate: string;
+  autopayEnabled?: boolean;
+  status: "active" | "completed";
+  installments: BNPLInstallment[];
+};
+
 type FinancesData = {
   currentBalance: number | null;
   items: RecurringItem[];
@@ -67,12 +90,13 @@ type FinancesData = {
   dateOverrides?: DateOverride[];
   savings?: SavingsData;
   debt?: { accounts: DebtAccount[] };
+  bnpl?: { plans: BNPLPlan[] };
 };
 
 type DashboardData = { finances?: FinancesData; [key: string]: unknown };
 type SaveStatus    = "idle" | "saving" | "saved" | "error";
 
-type RowSource = { type: "recurring"; itemId: string } | { type: "transaction"; txnId: string } | { type: "empty" };
+type RowSource = { type: "recurring"; itemId: string } | { type: "transaction"; txnId: string } | { type: "bnpl"; planId: string } | { type: "empty" };
 
 type CashFlowRow = {
   date: string;
@@ -133,16 +157,266 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s8",  name:"Capital One Savor (min)",       amount:-110,     schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-08-31" },
   { id:"s9",  name:"Capital One Platinum (min)",    amount:-25,      schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-08-31" },
   { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,      schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true, endDate:"2026-08-31" },
-  { id:"s11", name:"Affirm Plan 2",                 amount:-28.55,   schedule:{ type:"monthly",  dayOfMonth:2  }, category:"BNPL",        active:true, endDate:"2027-03-02" },
-  { id:"s12", name:"Affirm Plan 3",                 amount:-53.81,   schedule:{ type:"monthly",  dayOfMonth:25 }, category:"BNPL",        active:true, endDate:"2027-04-25" },
-  { id:"s_amazon1", name:"Amazon Pay-in-4 Plan 1", amount:-32.50,   schedule:{ type:"once",     date:"2026-07-30" }, category:"BNPL",        active:true },
-  { id:"s_amazon2", name:"Amazon Pay-in-4 Plan 2", amount:-31.13,   schedule:{ type:"once",     date:"2026-08-06" }, category:"BNPL",        active:true },
   { id:"s13", name:"Disney Annual Pass",            amount:-67,      schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Subscriptions",active:true },
   { id:"s14", name:"Fitness membership",            amount:-40,      schedule:{ type:"monthly",  dayOfMonth:22 }, category:"Subscriptions",active:true },
   { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-08-31" },
   { id:"s_sinking", name:"Sinking funds → HYSA",  amount:-512, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2026-09-01", isTransfer:true },
   { id:"s_nelnet",  name:"Student loan → Nelnet", amount:-281, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-01-01", isTransfer:true },
   { id:"s_hsa",     name:"HSA contribution",       amount:-200, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-07-01", isTransfer:true },
+];
+
+const SEED_BNPL: BNPLPlan[] = [
+  {
+    id: "bnpl_instacart1",
+    merchant: "Instacart",
+    provider: "Instacart pay-in-4",
+    originalAmount: 67,
+    paidToDate: 33.48,
+    remainingBalance: 33.48,
+    regularInstallment: 16.74,
+    paymentsRemaining: 2,
+    totalInstallments: 4,
+    nextDueDate: "2026-07-24",
+    finalPaymentDate: "2026-08-07",
+    autopayEnabled: true,
+    status: "active",
+    installments: [
+      { date: "2026-07-24", amount: 16.74, isEstimated: false },
+      { date: "2026-08-07", amount: 16.74, isEstimated: false },
+    ],
+  },
+  {
+    id: "bnpl_instacart2",
+    merchant: "Instacart",
+    provider: "Instacart pay-in-4",
+    originalAmount: 90,
+    paidToDate: 44.84,
+    remainingBalance: 45.16,
+    regularInstallment: 22.58,
+    paymentsRemaining: 2,
+    totalInstallments: 4,
+    nextDueDate: "2026-07-31",
+    finalPaymentDate: "2026-08-14",
+    autopayEnabled: true,
+    status: "active",
+    installments: [
+      { date: "2026-07-31", amount: 22.58, isEstimated: false },
+      { date: "2026-08-14", amount: 22.58, isEstimated: false },
+    ],
+  },
+  {
+    id: "bnpl_steam",
+    merchant: "Steam",
+    provider: "Steam pay-in-4",
+    originalAmount: 96,
+    paidToDate: 49.02,
+    remainingBalance: 46.98,
+    regularInstallment: 23.49,
+    paymentsRemaining: 2,
+    totalInstallments: 4,
+    nextDueDate: "2026-07-31",
+    finalPaymentDate: "2026-08-14",
+    autopayEnabled: true,
+    status: "active",
+    installments: [
+      { date: "2026-07-31", amount: 23.49, isEstimated: false },
+      { date: "2026-08-14", amount: 23.49, isEstimated: false },
+    ],
+  },
+  {
+    id: "bnpl_amazon_affirm1",
+    merchant: "Amazon",
+    provider: "Affirm",
+    originalAmount: 181.12,
+    paidToDate: 0,
+    remainingBalance: 180.11,
+    regularInstallment: 22.64,
+    paymentsRemaining: 8,
+    totalInstallments: 8,
+    nextDueDate: "2026-08-17",
+    finalPaymentDate: "2027-03-17",
+    autopayEnabled: true,
+    status: "active",
+    installments: [
+      { date: "2026-08-17", amount: 22.64, isEstimated: true },
+      { date: "2026-09-17", amount: 22.64, isEstimated: true },
+      { date: "2026-10-17", amount: 22.64, isEstimated: true },
+      { date: "2026-11-17", amount: 22.64, isEstimated: true },
+      { date: "2026-12-17", amount: 22.64, isEstimated: true },
+      { date: "2027-01-17", amount: 22.64, isEstimated: true },
+      { date: "2027-02-17", amount: 22.64, isEstimated: true },
+      { date: "2027-03-17", amount: 21.63, isEstimated: true },
+    ],
+  },
+  {
+    id: "bnpl_amazon_affirm2",
+    merchant: "Amazon",
+    provider: "Affirm",
+    originalAmount: 968.58,
+    paidToDate: 415.24,
+    remainingBalance: 553.34,
+    regularInstallment: 53.81,
+    paymentsRemaining: 11,
+    totalInstallments: 11,
+    nextDueDate: "2026-07-25",
+    finalPaymentDate: "2027-05-25",
+    autopayEnabled: true,
+    status: "active",
+    installments: [
+      { date: "2026-07-25", amount: 53.81, isEstimated: false },
+      { date: "2026-08-25", amount: 53.81, isEstimated: false },
+      { date: "2026-09-25", amount: 53.81, isEstimated: false },
+      { date: "2026-10-25", amount: 53.81, isEstimated: false },
+      { date: "2026-11-25", amount: 53.81, isEstimated: false },
+      { date: "2026-12-25", amount: 53.81, isEstimated: false },
+      { date: "2027-01-25", amount: 53.81, isEstimated: false },
+      { date: "2027-02-25", amount: 53.81, isEstimated: false },
+      { date: "2027-03-25", amount: 53.81, isEstimated: false },
+      { date: "2027-04-25", amount: 53.81, isEstimated: false },
+      { date: "2027-05-25", amount: 15.24, isEstimated: false },
+    ],
+  },
+  {
+    id: "bnpl_amazon_affirm3",
+    merchant: "Amazon",
+    provider: "Affirm",
+    originalAmount: 292.85,
+    paidToDate: 114.20,
+    remainingBalance: 228.29,
+    regularInstallment: 28.55,
+    paymentsRemaining: 8,
+    totalInstallments: 8,
+    nextDueDate: "2026-08-02",
+    finalPaymentDate: "2027-03-02",
+    autopayEnabled: false,
+    status: "active",
+    installments: [
+      { date: "2026-08-02", amount: 28.55, isEstimated: true },
+      { date: "2026-09-02", amount: 28.55, isEstimated: true },
+      { date: "2026-10-02", amount: 28.55, isEstimated: true },
+      { date: "2026-11-02", amount: 28.55, isEstimated: true },
+      { date: "2026-12-02", amount: 28.55, isEstimated: true },
+      { date: "2027-01-02", amount: 28.55, isEstimated: true },
+      { date: "2027-02-02", amount: 28.55, isEstimated: true },
+      { date: "2027-03-02", amount: 28.44, isEstimated: true },
+    ],
+  },
+  {
+    id: "bnpl_disney_affirm",
+    merchant: "Disney World",
+    provider: "Affirm",
+    originalAmount: 318.62,
+    paidToDate: 117.40,
+    remainingBalance: 234.00,
+    regularInstallment: 58.70,
+    paymentsRemaining: 4,
+    totalInstallments: 4,
+    nextDueDate: "2026-08-07",
+    finalPaymentDate: "2026-11-07",
+    autopayEnabled: true,
+    status: "active",
+    installments: [
+      { date: "2026-08-07", amount: 58.70, isEstimated: false },
+      { date: "2026-09-07", amount: 58.70, isEstimated: false },
+      { date: "2026-10-07", amount: 58.70, isEstimated: false },
+      { date: "2026-11-07", amount: 57.90, isEstimated: false },
+    ],
+  },
+  {
+    id: "bnpl_guinthers",
+    merchant: "SP Guinthers",
+    provider: "Klarna",
+    originalAmount: 135,
+    paidToDate: 68.54,
+    remainingBalance: 66.46,
+    regularInstallment: 33.75,
+    paymentsRemaining: 2,
+    totalInstallments: 2,
+    nextDueDate: "2026-07-29",
+    finalPaymentDate: "2026-08-12",
+    autopayEnabled: false,
+    status: "active",
+    installments: [
+      { date: "2026-07-29", amount: 33.75, isEstimated: false },
+      { date: "2026-08-12", amount: 32.71, isEstimated: false },
+    ],
+  },
+  {
+    id: "bnpl_painted_oem",
+    merchant: "Painted OEM Parts",
+    provider: "Klarna",
+    originalAmount: 294.22,
+    paidToDate: 110.34,
+    remainingBalance: 183.88,
+    regularInstallment: 36.78,
+    paymentsRemaining: 5,
+    totalInstallments: 5,
+    nextDueDate: "2026-07-29",
+    finalPaymentDate: "2026-09-23",
+    autopayEnabled: false,
+    status: "active",
+    installments: [
+      { date: "2026-07-29", amount: 36.78, isEstimated: false },
+      { date: "2026-08-12", amount: 36.78, isEstimated: false },
+      { date: "2026-08-26", amount: 36.78, isEstimated: false },
+      { date: "2026-09-09", amount: 36.78, isEstimated: true },
+      { date: "2026-09-23", amount: 36.76, isEstimated: true },
+    ],
+  },
+  {
+    id: "bnpl_divorce_horse",
+    merchant: "Divorce Horse",
+    provider: "PayPal Pay Later",
+    originalAmount: 294.72,
+    paidToDate: 221.04,
+    remainingBalance: 73.68,
+    regularInstallment: 73.68,
+    paymentsRemaining: 1,
+    totalInstallments: 6,
+    nextDueDate: "2026-08-02",
+    finalPaymentDate: "2026-08-02",
+    autopayEnabled: false,
+    status: "active",
+    installments: [
+      { date: "2026-08-02", amount: 73.68, isEstimated: false },
+    ],
+  },
+  {
+    id: "bnpl_amazon_payin4_1",
+    merchant: "Amazon",
+    provider: "Pay-in-4",
+    originalAmount: 32.50,
+    paidToDate: 0,
+    remainingBalance: 32.50,
+    regularInstallment: 32.50,
+    paymentsRemaining: 1,
+    totalInstallments: 1,
+    nextDueDate: "2026-07-30",
+    finalPaymentDate: "2026-07-30",
+    autopayEnabled: false,
+    status: "active",
+    installments: [
+      { date: "2026-07-30", amount: 32.50, isEstimated: false },
+    ],
+  },
+  {
+    id: "bnpl_amazon_payin4_2",
+    merchant: "Amazon",
+    provider: "Pay-in-4",
+    originalAmount: 31.13,
+    paidToDate: 0,
+    remainingBalance: 31.13,
+    regularInstallment: 31.13,
+    paymentsRemaining: 1,
+    totalInstallments: 1,
+    nextDueDate: "2026-08-06",
+    finalPaymentDate: "2026-08-06",
+    autopayEnabled: false,
+    status: "active",
+    installments: [
+      { date: "2026-08-06", amount: 31.13, isEstimated: false },
+    ],
+  },
 ];
 
 // Sept 2026 plan items — always injected at render time regardless of stored data
@@ -212,6 +486,7 @@ function generateCashFlow(
   transactions: Transaction[],
   overrides: Override[],
   dateOverrides?: DateOverride[],
+  bnplPlans?: BNPLPlan[],
 ): CashFlowRow[] {
   const rows: CashFlowRow[] = [];
   const today = todayStr();
@@ -251,6 +526,17 @@ function generateCashFlow(
     // Logged transactions
     for (const t of transactions.filter(t => t.date === dateStr)) {
       filteredHits.push({ description: t.description, amount: t.amount, source: { type: "transaction", txnId: t.id }, isTransfer: false });
+    }
+
+    // BNPL installments
+    if (bnplPlans) {
+      for (const plan of bnplPlans) {
+        for (const inst of plan.installments) {
+          if (inst.date === dateStr) {
+            filteredHits.push({ description: `${plan.merchant} (BNPL)`, amount: -inst.amount, source: { type: "bnpl", planId: plan.id }, isTransfer: false });
+          }
+        }
+      }
     }
 
     if (filteredHits.length === 0) {
@@ -348,6 +634,9 @@ export default function FinancesPage() {
 
   const [editingBalance, setEditingBalance] = useState(false);
   const [balanceInput,   setBalanceInput]   = useState("");
+
+  // ── BNPL state ────────────────────────────────────────────────────────────
+  const [bnplPlans, setBNPLPlans] = useState<BNPLPlan[]>(SEED_BNPL);
 
   // ── Savings state ──────────────────────────────────────────────────────────
   const [savings,        setSavings]        = useState<SavingsData>({ totalBalance: null, buckets: [] });
@@ -483,6 +772,8 @@ export default function FinancesPage() {
         // Savings & debt
         setSavings(f.savings ?? { totalBalance: null, buckets: [] });
         setDebtAccounts(f.debt?.accounts ?? SEED_DEBTS);
+        // BNPL plans
+        setBNPLPlans(f.bnpl?.plans ?? SEED_BNPL);
 
         // Auto-save after migrations so they persist
         if (migrated) {
@@ -491,7 +782,11 @@ export default function FinancesPage() {
           fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) }).catch(() => {});
         }
       })
-      .catch(() => setStatus("error"))
+      .catch(() => {
+        setStatus("error");
+        // Initialize BNPL plans from seed even if API fails
+        setBNPLPlans(SEED_BNPL);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -741,8 +1036,8 @@ export default function FinancesPage() {
   // ── Cash flow ─────────────────────────────────────────────────────────────
   const allRows = useMemo(() => {
     if (finances.currentBalance == null) return [];
-    return generateCashFlow(finances.currentBalance, todayStr(), 365, effectiveItems, finances.transactions, finances.overrides, finances.dateOverrides);
-  }, [finances, effectiveItems]);
+    return generateCashFlow(finances.currentBalance, todayStr(), 365, effectiveItems, finances.transactions, finances.overrides, finances.dateOverrides, bnplPlans);
+  }, [finances, effectiveItems, bnplPlans]);
 
   const displayRows = useMemo(() => {
     const today = todayStr();
@@ -1609,6 +1904,47 @@ export default function FinancesPage() {
                 </details>
               );
             })}
+
+            {/* BNPL Plans section */}
+            {bnplPlans.length > 0 && (
+              <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--border)" }}>
+                <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "8px" }}>
+                  💳 BNPL PLANS ({bnplPlans.length})
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {bnplPlans.map(plan => {
+                    const completedInstallments = plan.installments.filter(i => i.date < todayStr()).length;
+                    const progress = (completedInstallments / plan.totalInstallments) * 100;
+                    const nextInstallment = plan.installments.find(i => i.date >= todayStr());
+                    return (
+                      <div key={plan.id} style={{ background: "var(--surface-raised)", borderRadius: "6px", padding: "10px", border: "1px solid var(--border)" }}>
+                        <div className="row" style={{ padding: "0", alignItems: "flex-start", marginBottom: "8px" }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)", marginBottom: "2px" }}>{plan.merchant}</div>
+                            <div style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "2px" }}>{plan.provider} • {plan.paymentsRemaining} payments left</div>
+                            <div style={{ fontSize: "11px", color: "var(--text-3)" }}>Original: {fmt$(plan.originalAmount)} | Paid: {fmt$(plan.paidToDate)} | Remaining: {fmt$(plan.remainingBalance)}</div>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontSize: "13.5px", fontWeight: 600, fontVariantNumeric: "tabular-nums", color: "var(--text-2)", marginBottom: "4px" }}>{fmt$(plan.remainingBalance)}</div>
+                            <div style={{ fontSize: "10px", color: "var(--text-3)", background: "var(--surface-overlay)", padding: "2px 6px", borderRadius: "3px", display: "inline-block" }}>
+                              {completedInstallments}/{plan.totalInstallments}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ background: "var(--surface-overlay)", height: "4px", borderRadius: "2px", overflow: "hidden", marginBottom: "8px" }}>
+                          <div style={{ background: "var(--green)", height: "100%", width: `${progress}%` }}></div>
+                        </div>
+                        {nextInstallment && (
+                          <div style={{ fontSize: "11px", color: "var(--text-3)" }}>
+                            Next: {fmt$(nextInstallment.amount)} on {fmtDate(nextInstallment.date)}{nextInstallment.isEstimated ? " (est.)" : ""}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Subscription-synced items read-only section */}
             {finances.items.some(it => it.id.startsWith("sub_")) && (
