@@ -898,6 +898,9 @@ export default function FinancesPage() {
       updated.transactions = updated.transactions.map(t =>
         t.id === source.txnId ? { ...t, amount: newAmount } : t
       );
+    } else if (source.type === "bnpl") {
+      // BNPL installments are fixed payment amounts and cannot be edited
+      return;
     }
 
     setFinances(updated); setEditingRow(null); save(updated);
