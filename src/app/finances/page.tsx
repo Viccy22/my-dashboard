@@ -65,6 +65,8 @@ type BNPLInstallment = {
   isEstimated?: boolean;
 };
 
+type BNPLFrequency = "weekly" | "biweekly" | "monthly";
+
 type BNPLPlan = {
   id: string;
   merchant: string;
@@ -77,6 +79,7 @@ type BNPLPlan = {
   totalInstallments: number;
   nextDueDate: string;
   finalPaymentDate: string;
+  frequency?: BNPLFrequency;
   autopayEnabled?: boolean;
   status: "active" | "completed";
   installments: BNPLInstallment[];
@@ -444,6 +447,16 @@ function addDays(dateStr: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Advances a date by one occurrence of a BNPL payment frequency. Monthly
+// advances by calendar month (keeps day-of-month) rather than a flat 30 days.
+function addByFrequency(dateStr: string, freq: "weekly" | "biweekly" | "monthly"): string {
+  if (freq === "weekly") return addDays(dateStr, 7);
+  if (freq === "biweekly") return addDays(dateStr, 14);
+  const d = new Date(dateStr + "T00:00:00");
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function itemAppliesToDate(item: RecurringItem, dateStr: string): boolean {
   if (!item.active) return false;
   if (item.endDate && dateStr > item.endDate) return false;
@@ -633,6 +646,8 @@ export default function FinancesPage() {
   const [editingBnplId, setEditingBnplId] = useState<string | null>(null);
   const [bnplPaymentsInput, setBnplPaymentsInput] = useState("");
   const [expandedBnplId, setExpandedBnplId] = useState<string | null>(null);
+  const [editingBnplNameId, setEditingBnplNameId] = useState<string | null>(null);
+  const [bnplNameInput, setBnplNameInput] = useState("");
 
   // ── Savings state ──────────────────────────────────────────────────────────
   const [savings,        setSavings]        = useState<SavingsData>({ totalBalance: null, buckets: [] });
@@ -855,12 +870,10 @@ export default function FinancesPage() {
     } else {
       const last = future[future.length - 1] ?? past[past.length - 1];
       let lastDate = last?.date ?? today;
-      const interval = future.length >= 2
-        ? Math.round((new Date(future[1].date + "T00:00:00").getTime() - new Date(future[0].date + "T00:00:00").getTime()) / 86400000)
-        : 30;
+      const freq = plan.frequency ?? "monthly";
       const amount = plan.regularInstallment;
       while (future.length < newCount) {
-        lastDate = addDays(lastDate, interval || 30);
+        lastDate = addByFrequency(lastDate, freq);
         future.push({ date: lastDate, amount, isEstimated: true });
       }
     }
@@ -899,6 +912,60 @@ export default function FinancesPage() {
       status: future.length === 0 ? "completed" : "active",
     };
     saveBnplPlans(bnplPlans.map(p => p.id === planId ? updated : p));
+  };
+
+  const renameBnplPlan = (planId: string, name: string) => {
+    if (!name.trim()) return;
+    saveBnplPlans(bnplPlans.map(p => p.id === planId ? { ...p, merchant: name.trim() } : p));
+  };
+
+  const setBnplFrequency = (planId: string, freq: BNPLFrequency) => {
+    saveBnplPlans(bnplPlans.map(p => p.id === planId ? { ...p, frequency: freq } : p));
+  };
+
+  const deleteBnplPlan = (planId: string) => {
+    saveBnplPlans(bnplPlans.filter(p => p.id !== planId));
+  };
+
+  const [addingBnpl, setAddingBnpl] = useState(false);
+  const [newBnpl, setNewBnpl] = useState({
+    name: "", provider: "", amount: "", numPayments: "4",
+    frequency: "biweekly" as BNPLFrequency, startDate: todayStr(),
+  });
+
+  const addBnplPlan = () => {
+    const amount = parseFloat(newBnpl.amount.replace(/,/g, "").replace(/\$/g, ""));
+    const numPayments = parseInt(newBnpl.numPayments, 10);
+    if (!newBnpl.name.trim() || isNaN(amount) || amount <= 0 || isNaN(numPayments) || numPayments <= 0 || !newBnpl.startDate) return;
+
+    const installments: BNPLInstallment[] = [];
+    let date = newBnpl.startDate;
+    for (let i = 0; i < numPayments; i++) {
+      installments.push({ date, amount });
+      if (i < numPayments - 1) date = addByFrequency(date, newBnpl.frequency);
+    }
+
+    const plan: BNPLPlan = {
+      id: crypto.randomUUID(),
+      merchant: newBnpl.name.trim(),
+      provider: newBnpl.provider.trim() || newBnpl.frequency,
+      originalAmount: Math.round(amount * numPayments * 100) / 100,
+      paidToDate: 0,
+      remainingBalance: Math.round(amount * numPayments * 100) / 100,
+      regularInstallment: amount,
+      paymentsRemaining: numPayments,
+      totalInstallments: numPayments,
+      nextDueDate: installments[0].date,
+      finalPaymentDate: installments[installments.length - 1].date,
+      frequency: newBnpl.frequency,
+      autopayEnabled: false,
+      status: "active",
+      installments,
+    };
+
+    saveBnplPlans([...bnplPlans, plan]);
+    setAddingBnpl(false);
+    setNewBnpl({ name: "", provider: "", amount: "", numPayments: "4", frequency: "biweekly", startDate: todayStr() });
   };
 
   // ── Balance ───────────────────────────────────────────────────────────────
@@ -1965,11 +2032,49 @@ export default function FinancesPage() {
             })}
 
             {/* BNPL Plans section */}
-            {bnplPlans.length > 0 && (
-              <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--border)" }}>
-                <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "8px" }}>
-                  💳 BNPL PLANS ({bnplPlans.length})
-                </p>
+            <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", margin: 0 }}>
+                    💳 BNPL PLANS ({bnplPlans.length})
+                  </p>
+                  {!addingBnpl && (
+                    <button className="btn btn-secondary" style={{ fontSize: "11px", padding: "3px 10px" }} onClick={() => setAddingBnpl(true)}>+ Add Plan</button>
+                  )}
+                </div>
+
+                {addingBnpl && (
+                  <div style={{ background: "var(--surface-raised)", borderRadius: "6px", padding: "10px", border: "1px solid var(--accent)", marginBottom: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <input className="input" type="text" placeholder="Name (e.g. Amazon, Best Buy…)" value={newBnpl.name}
+                      onChange={e => setNewBnpl({ ...newBnpl, name: e.target.value })} style={{ fontSize: "13px" }} autoFocus />
+                    <input className="input" type="text" placeholder="Provider (e.g. Affirm, Klarna…)" value={newBnpl.provider}
+                      onChange={e => setNewBnpl({ ...newBnpl, provider: e.target.value })} style={{ fontSize: "13px" }} />
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", background: "var(--surface-overlay)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0 10px", flex: "1 1 100px" }}>
+                        <span style={{ color: "var(--text-3)", fontSize: "13px", marginRight: "4px" }}>$</span>
+                        <input style={{ background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: "13px", width: "100%", padding: "8px 0", fontFamily: "inherit" }}
+                          type="number" step="0.01" min="0" placeholder="Amount / payment"
+                          value={newBnpl.amount} onChange={e => setNewBnpl({ ...newBnpl, amount: e.target.value })} />
+                      </div>
+                      <input className="input" type="number" min="1" step="1" placeholder="# payments" value={newBnpl.numPayments}
+                        onChange={e => setNewBnpl({ ...newBnpl, numPayments: e.target.value })} style={{ fontSize: "13px", flex: "0 0 110px" }} />
+                      <select className="input" value={newBnpl.frequency}
+                        onChange={e => setNewBnpl({ ...newBnpl, frequency: e.target.value as BNPLFrequency })}
+                        style={{ fontSize: "13px", flex: "0 0 120px" }}>
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Biweekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                      <input className="input" type="date" value={newBnpl.startDate}
+                        onChange={e => setNewBnpl({ ...newBnpl, startDate: e.target.value })} style={{ fontSize: "13px", flex: "0 0 148px" }} />
+                    </div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button className="btn btn-primary" style={{ fontSize: "12px", padding: "6px 14px" }} onClick={addBnplPlan}>Add Plan</button>
+                      <button className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 14px" }} onClick={() => setAddingBnpl(false)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {bnplPlans.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {bnplPlans.map(plan => {
                     const today = todayStr();
@@ -1984,9 +2089,34 @@ export default function FinancesPage() {
                       <div key={plan.id} style={{ background: "var(--surface-raised)", borderRadius: "6px", padding: "10px", border: "1px solid var(--border)" }}>
                         <div className="row" style={{ padding: "0", alignItems: "flex-start", marginBottom: "8px" }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)", marginBottom: "2px" }}>{plan.merchant}</div>
-                            <div style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            {editingBnplNameId === plan.id ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "2px" }}>
+                                <input type="text" autoFocus value={bnplNameInput}
+                                  onChange={e => setBnplNameInput(e.target.value)}
+                                  onKeyDown={e => { if (e.key === "Enter") { renameBnplPlan(plan.id, bnplNameInput); setEditingBnplNameId(null); } if (e.key === "Escape") setEditingBnplNameId(null); }}
+                                  style={{ background: "var(--surface-overlay)", border: "1px solid var(--accent)", borderRadius: "4px", color: "var(--text)", fontSize: "13.5px", fontWeight: 600, padding: "2px 6px", fontFamily: "inherit", outline: "none" }} />
+                                <button className="btn-icon" title="Save" style={{ color: "var(--green)" }}
+                                  onClick={() => { renameBnplPlan(plan.id, bnplNameInput); setEditingBnplNameId(null); }}><CheckIcon /></button>
+                                <button className="btn-icon" title="Cancel" onClick={() => setEditingBnplNameId(null)}><XIcon /></button>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)", marginBottom: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                {plan.merchant}
+                                <button className="btn-icon" title="Rename" style={{ opacity: 0.4 }}
+                                  onClick={() => { setEditingBnplNameId(plan.id); setBnplNameInput(plan.merchant); }}><PencilIcon /></button>
+                                <button className="btn-icon" title="Delete plan" style={{ opacity: 0.4, marginLeft: "auto" }}
+                                  onClick={() => { if (confirm(`Remove ${plan.merchant} from BNPL plans?`)) deleteBnplPlan(plan.id); }}><XIcon /></button>
+                              </div>
+                            )}
+                            <div style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "2px", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                               <span>{plan.provider} •</span>
+                              <select value={plan.frequency ?? "monthly"} onChange={e => setBnplFrequency(plan.id, e.target.value as BNPLFrequency)}
+                                style={{ background: "var(--surface-overlay)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text-3)", fontSize: "11px", padding: "1px 4px", fontFamily: "inherit" }}>
+                                <option value="weekly">Weekly</option>
+                                <option value="biweekly">Biweekly</option>
+                                <option value="monthly">Monthly</option>
+                              </select>
+                              <span>•</span>
                               {editingBnplId === plan.id ? (
                                 <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                                   <input
@@ -2052,8 +2182,8 @@ export default function FinancesPage() {
                     );
                   })}
                 </div>
+                )}
               </div>
-            )}
 
             {/* Subscription-synced items read-only section */}
             {finances.items.some(it => it.id.startsWith("sub_")) && (
