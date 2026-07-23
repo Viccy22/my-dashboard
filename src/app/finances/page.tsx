@@ -648,6 +648,9 @@ export default function FinancesPage() {
   const [expandedBnplId, setExpandedBnplId] = useState<string | null>(null);
   const [editingBnplNameId, setEditingBnplNameId] = useState<string | null>(null);
   const [bnplNameInput, setBnplNameInput] = useState("");
+  const [editingInstallment, setEditingInstallment] = useState<{ planId: string; date: string } | null>(null);
+  const [installmentDateInput, setInstallmentDateInput] = useState("");
+  const [installmentAmountInput, setInstallmentAmountInput] = useState("");
 
   // ── Savings state ──────────────────────────────────────────────────────────
   const [savings,        setSavings]        = useState<SavingsData>({ totalBalance: null, buckets: [] });
@@ -854,64 +857,82 @@ export default function FinancesPage() {
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
   }, []);
 
-  // Change how many payments are left on a BNPL plan. Trims from the latest
-  // dated future installment when reducing; extends at the existing cadence
-  // (interval between the last two installments, or 30 days) when increasing.
-  const updateBnplPaymentsRemaining = (planId: string, newCount: number) => {
-    if (newCount < 0) return;
-    const plan = bnplPlans.find(p => p.id === planId);
-    if (!plan) return;
+  // Recompute a plan's derived summary fields (remaining count/balance, next/final
+  // dates) from its actual installment list — never guessed or estimated.
+  const recalcBnplPlan = (plan: BNPLPlan, installments: BNPLInstallment[]): BNPLPlan => {
     const today = todayStr();
-    const past = plan.installments.filter(i => i.date < today).sort((a, b) => a.date.localeCompare(b.date));
-    let future = plan.installments.filter(i => i.date >= today).sort((a, b) => a.date.localeCompare(b.date));
-
-    if (newCount <= future.length) {
-      future = future.slice(0, newCount);
-    } else {
-      const last = future[future.length - 1] ?? past[past.length - 1];
-      let lastDate = last?.date ?? today;
-      const freq = plan.frequency ?? "monthly";
-      const amount = plan.regularInstallment;
-      while (future.length < newCount) {
-        lastDate = addByFrequency(lastDate, freq);
-        future.push({ date: lastDate, amount, isEstimated: true });
-      }
-    }
-
-    const newInstallments = [...past, ...future];
-    const remainingBalance = Math.round(future.reduce((s, i) => s + i.amount, 0) * 100) / 100;
-    const updated: BNPLPlan = {
+    const sorted = [...installments].sort((a, b) => a.date.localeCompare(b.date));
+    const future = sorted.filter(i => i.date >= today);
+    return {
       ...plan,
-      installments: newInstallments,
+      installments: sorted,
       paymentsRemaining: future.length,
-      totalInstallments: past.length + future.length,
-      remainingBalance,
-      nextDueDate: future[0]?.date ?? plan.nextDueDate,
-      finalPaymentDate: future[future.length - 1]?.date ?? plan.finalPaymentDate,
-      status: future.length === 0 ? "completed" : "active",
-    };
-    const updatedPlans = bnplPlans.map(p => p.id === planId ? updated : p);
-    setEditingBnplId(null);
-    saveBnplPlans(updatedPlans);
-  };
-
-  const deleteBnplInstallment = (planId: string, date: string) => {
-    const plan = bnplPlans.find(p => p.id === planId);
-    if (!plan) return;
-    const newInstallments = plan.installments.filter(i => i.date !== date);
-    const today = todayStr();
-    const future = newInstallments.filter(i => i.date >= today);
-    const updated: BNPLPlan = {
-      ...plan,
-      installments: newInstallments,
-      paymentsRemaining: future.length,
-      totalInstallments: newInstallments.length,
+      totalInstallments: sorted.length,
       remainingBalance: Math.round(future.reduce((s, i) => s + i.amount, 0) * 100) / 100,
       nextDueDate: future[0]?.date ?? plan.nextDueDate,
       finalPaymentDate: future[future.length - 1]?.date ?? plan.finalPaymentDate,
       status: future.length === 0 ? "completed" : "active",
     };
+  };
+
+  // "Payments left" quick editor only trims trailing (latest-dated) future
+  // installments when reducing. Increasing must be done via "+ Add Payment"
+  // below, where you pick the actual date — no guessed/estimated dates.
+  const updateBnplPaymentsRemaining = (planId: string, newCount: number) => {
+    if (newCount < 0) return;
+    const plan = bnplPlans.find(p => p.id === planId);
+    if (!plan) return;
+    const today = todayStr();
+    const past = plan.installments.filter(i => i.date < today);
+    let future = plan.installments.filter(i => i.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+    if (newCount >= future.length) { setEditingBnplId(null); return; }
+    future = future.slice(0, newCount);
+    const updated = recalcBnplPlan(plan, [...past, ...future]);
+    setEditingBnplId(null);
     saveBnplPlans(bnplPlans.map(p => p.id === planId ? updated : p));
+  };
+
+  const deleteBnplInstallment = (planId: string, date: string) => {
+    const plan = bnplPlans.find(p => p.id === planId);
+    if (!plan) return;
+    const updated = recalcBnplPlan(plan, plan.installments.filter(i => i.date !== date));
+    saveBnplPlans(bnplPlans.map(p => p.id === planId ? updated : p));
+  };
+
+  // User picks the exact new date for an existing installment.
+  const updateBnplInstallmentDate = (planId: string, oldDate: string, newDate: string) => {
+    if (!newDate) return;
+    const plan = bnplPlans.find(p => p.id === planId);
+    if (!plan) return;
+    const newInstallments = plan.installments.map(i => i.date === oldDate ? { ...i, date: newDate, isEstimated: false } : i);
+    const updated = recalcBnplPlan(plan, newInstallments);
+    saveBnplPlans(bnplPlans.map(p => p.id === planId ? updated : p));
+  };
+
+  const updateBnplInstallmentAmount = (planId: string, date: string, amount: number) => {
+    const plan = bnplPlans.find(p => p.id === planId);
+    if (!plan) return;
+    const newInstallments = plan.installments.map(i => i.date === date ? { ...i, amount } : i);
+    const updated = recalcBnplPlan(plan, newInstallments);
+    saveBnplPlans(bnplPlans.map(p => p.id === planId ? updated : p));
+  };
+
+  // Add a brand-new payment on a user-picked date (never auto-generated).
+  const [addingBnplPaymentId, setAddingBnplPaymentId] = useState<string | null>(null);
+  const [newPaymentDate, setNewPaymentDate] = useState(todayStr());
+  const [newPaymentAmount, setNewPaymentAmount] = useState("");
+
+  const addBnplInstallment = (planId: string) => {
+    const amount = parseFloat(newPaymentAmount.replace(/,/g, "").replace(/\$/g, ""));
+    if (isNaN(amount) || amount <= 0 || !newPaymentDate) return;
+    const plan = bnplPlans.find(p => p.id === planId);
+    if (!plan) return;
+    if (plan.installments.some(i => i.date === newPaymentDate)) return;
+    const updated = recalcBnplPlan(plan, [...plan.installments, { date: newPaymentDate, amount, isEstimated: false }]);
+    saveBnplPlans(bnplPlans.map(p => p.id === planId ? updated : p));
+    setAddingBnplPaymentId(null);
+    setNewPaymentAmount("");
+    setNewPaymentDate(todayStr());
   };
 
   const renameBnplPlan = (planId: string, name: string) => {
@@ -2129,7 +2150,7 @@ export default function FinancesPage() {
                                     }}
                                     style={{ width: "48px", background: "var(--surface-overlay)", border: "1px solid var(--accent)", borderRadius: "4px", color: "var(--text)", fontSize: "11px", padding: "1px 4px", fontFamily: "inherit", outline: "none" }}
                                   />
-                                  <span>payments left</span>
+                                  <span>payments left (lower only — trims latest dates)</span>
                                   <button className="btn-icon" title="Save" style={{ color: "var(--green)" }}
                                     onClick={() => { const n = parseInt(bnplPaymentsInput, 10); if (!isNaN(n)) updateBnplPaymentsRemaining(plan.id, n); }}><CheckIcon /></button>
                                   <button className="btn-icon" title="Cancel" onClick={() => setEditingBnplId(null)}><XIcon /></button>
@@ -2137,7 +2158,7 @@ export default function FinancesPage() {
                               ) : (
                                 <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                                   {paymentsLeft} payments left
-                                  <button className="btn-icon" title="Edit payments left" style={{ opacity: 0.5 }}
+                                  <button className="btn-icon" title="Reduce payments left (to add more, use + Add Payment below)" style={{ opacity: 0.5 }}
                                     onClick={() => { setEditingBnplId(plan.id); setBnplPaymentsInput(String(paymentsLeft)); }}><PencilIcon /></button>
                                 </span>
                               )}
@@ -2162,20 +2183,71 @@ export default function FinancesPage() {
                           </div>
                         )}
                         {isExpanded && (
-                          <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: "6px" }}>
                             {plan.installments.length === 0 && <div style={{ fontSize: "11px", color: "var(--text-3)" }}>No installments.</div>}
-                            {[...plan.installments].sort((a, b) => a.date.localeCompare(b.date)).map(inst => (
-                              <div key={inst.date} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11.5px" }}>
-                                <span style={{ color: inst.date < today ? "var(--text-3)" : "var(--text-2)", opacity: inst.date < today ? 0.6 : 1 }}>
-                                  {fmtDate(inst.date)}{inst.isEstimated ? " (est.)" : ""}{inst.date < today ? " ✓" : ""}
-                                </span>
-                                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                  <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{fmt$(inst.amount)}</span>
-                                  <button className="btn-icon" title="Remove this installment" style={{ opacity: 0.5 }}
-                                    onClick={() => deleteBnplInstallment(plan.id, inst.date)}><XIcon /></button>
-                                </span>
+                            {[...plan.installments].sort((a, b) => a.date.localeCompare(b.date)).map(inst => {
+                              const isEditingRow = editingInstallment?.planId === plan.id && editingInstallment?.date === inst.date;
+                              return (
+                                <div key={inst.date} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11.5px", gap: "6px" }}>
+                                  {isEditingRow ? (
+                                    <>
+                                      <input type="date" value={installmentDateInput} autoFocus
+                                        onChange={e => setInstallmentDateInput(e.target.value)}
+                                        style={{ background: "var(--surface-overlay)", border: "1px solid var(--accent)", borderRadius: "4px", color: "var(--text)", fontSize: "11px", padding: "2px 4px", fontFamily: "inherit", outline: "none" }} />
+                                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                        <span style={{ color: "var(--text-3)" }}>$</span>
+                                        <input type="number" step="0.01" min="0" value={installmentAmountInput}
+                                          onChange={e => setInstallmentAmountInput(e.target.value)}
+                                          onKeyDown={e => { if (e.key === "Escape") setEditingInstallment(null); }}
+                                          style={{ width: "64px", background: "var(--surface-overlay)", border: "1px solid var(--accent)", borderRadius: "4px", color: "var(--text)", fontSize: "11px", padding: "2px 4px", fontFamily: "inherit", outline: "none" }} />
+                                        <button className="btn-icon" title="Save" style={{ color: "var(--green)" }}
+                                          onClick={() => {
+                                            const amt = parseFloat(installmentAmountInput);
+                                            if (installmentDateInput !== inst.date) updateBnplInstallmentDate(plan.id, inst.date, installmentDateInput);
+                                            if (!isNaN(amt) && amt !== inst.amount) updateBnplInstallmentAmount(plan.id, installmentDateInput !== inst.date ? installmentDateInput : inst.date, amt);
+                                            setEditingInstallment(null);
+                                          }}><CheckIcon /></button>
+                                        <button className="btn-icon" title="Cancel" onClick={() => setEditingInstallment(null)}><XIcon /></button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span style={{ color: inst.date < today ? "var(--text-3)" : "var(--text-2)", opacity: inst.date < today ? 0.6 : 1, display: "flex", alignItems: "center", gap: "4px" }}>
+                                        {fmtDate(inst.date)}{inst.date < today ? " ✓" : ""}
+                                        <button className="btn-icon" title="Edit date/amount" style={{ opacity: 0.4 }}
+                                          onClick={() => { setEditingInstallment({ planId: plan.id, date: inst.date }); setInstallmentDateInput(inst.date); setInstallmentAmountInput(String(inst.amount)); }}><PencilIcon /></button>
+                                      </span>
+                                      <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{fmt$(inst.amount)}</span>
+                                        <button className="btn-icon" title="Remove this installment" style={{ opacity: 0.5 }}
+                                          onClick={() => deleteBnplInstallment(plan.id, inst.date)}><XIcon /></button>
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {addingBnplPaymentId === plan.id ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                                <input type="date" value={newPaymentDate} autoFocus
+                                  onChange={e => setNewPaymentDate(e.target.value)}
+                                  style={{ background: "var(--surface-overlay)", border: "1px solid var(--accent)", borderRadius: "4px", color: "var(--text)", fontSize: "11px", padding: "2px 4px", fontFamily: "inherit", outline: "none" }} />
+                                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                  <span style={{ color: "var(--text-3)" }}>$</span>
+                                  <input type="number" step="0.01" min="0" placeholder={String(plan.regularInstallment)} value={newPaymentAmount}
+                                    onChange={e => setNewPaymentAmount(e.target.value)}
+                                    onKeyDown={e => { if (e.key === "Enter") addBnplInstallment(plan.id); if (e.key === "Escape") setAddingBnplPaymentId(null); }}
+                                    style={{ width: "64px", background: "var(--surface-overlay)", border: "1px solid var(--accent)", borderRadius: "4px", color: "var(--text)", fontSize: "11px", padding: "2px 4px", fontFamily: "inherit", outline: "none" }} />
+                                  <button className="btn-icon" title="Save" style={{ color: "var(--green)" }} onClick={() => addBnplInstallment(plan.id)}><CheckIcon /></button>
+                                  <button className="btn-icon" title="Cancel" onClick={() => setAddingBnplPaymentId(null)}><XIcon /></button>
+                                </div>
                               </div>
-                            ))}
+                            ) : (
+                              <button className="btn btn-secondary" style={{ fontSize: "11px", padding: "3px 10px", alignSelf: "flex-start", marginTop: "2px" }}
+                                onClick={() => { setAddingBnplPaymentId(plan.id); setNewPaymentDate(todayStr()); setNewPaymentAmount(String(plan.regularInstallment)); }}>
+                                + Add Payment
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
