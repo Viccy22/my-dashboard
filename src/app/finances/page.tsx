@@ -694,6 +694,8 @@ export default function FinancesPage() {
   const [dateOverrideInput, setDateOverrideInput] = useState("");
   const [editingBillEndDate, setEditingBillEndDate] = useState<string | null>(null);
   const [endDateInput, setEndDateInput] = useState("");
+  const [editingBillStartDate, setEditingBillStartDate] = useState<string | null>(null);
+  const [startDateInput, setStartDateInput] = useState("");
 
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -761,6 +763,13 @@ export default function FinancesPage() {
         if (f.items.some(it => oldSplitIds.includes(it.id))) {
           f.items = f.items.filter(it => !oldSplitIds.includes(it.id));
           migrated = true;
+        }
+
+        // Materialize the planned savings/emergency-fund transfers into stored
+        // items so they show up in Recurring Bills and can be paused/edited.
+        // (Previously these lived only in PLAN_ITEMS, injected at render time.)
+        for (const p of PLAN_ITEMS) {
+          if (!f.items.some(it => it.id === p.id)) { f.items = [...f.items, p]; migrated = true; }
         }
 
         setFinances(f);
@@ -1114,6 +1123,18 @@ export default function FinancesPage() {
   const clearBillEndDate = (itemId: string) => {
     const updated = { ...finances, items: finances.items.map(it => it.id === itemId ? { ...it, endDate: undefined } : it) };
     setFinances(updated); setEditingBillEndDate(null); setEndDateInput(""); save(updated);
+  };
+
+  const saveBillStartDate = (itemId: string) => {
+    const date = startDateInput.trim();
+    if (!date) return;
+    const updated = { ...finances, items: finances.items.map(it => it.id === itemId ? { ...it, startDate: date } : it) };
+    setFinances(updated); setEditingBillStartDate(null); setStartDateInput(""); save(updated);
+  };
+
+  const clearBillStartDate = (itemId: string) => {
+    const updated = { ...finances, items: finances.items.map(it => it.id === itemId ? { ...it, startDate: undefined } : it) };
+    setFinances(updated); setEditingBillStartDate(null); setStartDateInput(""); save(updated);
   };
 
   // ── Move payment date (date override) ───────────────────────────────────────
@@ -2003,6 +2024,7 @@ export default function FinancesPage() {
                                       : "One-time";
                     const isBillEditing = editingBill?.id === item.id;
                     const isEndDateEditing = editingBillEndDate === item.id;
+                    const isStartDateEditing = editingBillStartDate === item.id;
                     return (
                       <div key={item.id} style={{ marginBottom: "10px", background: "var(--surface-raised)", borderRadius: "6px", padding: "8px", border: "1px solid var(--border)" }}>
                         <div className="row" style={{ padding: "0", opacity: item.active ? 1 : 0.35, alignItems: "center", marginBottom: "6px" }}
@@ -2010,7 +2032,17 @@ export default function FinancesPage() {
                           onMouseLeave={e => e.currentTarget.querySelectorAll<HTMLElement>(".bill-act").forEach(el => el.style.opacity = "0")}>
                           <div style={{ flex: 1 }}>
                             <span style={{ fontSize: "13.5px", color: "var(--text)" }}>{item.name}</span>
-                            {isEndDateEditing ? (
+                            {!item.active && <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--yellow)", marginLeft: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Paused</span>}
+                            {isStartDateEditing ? (
+                              <div style={{ marginTop: "6px", display: "flex", gap: "6px", alignItems: "center" }}>
+                                <span style={{ fontSize: "11px", color: "var(--text-3)" }}>Starts:</span>
+                                <input type="date" className="input" value={startDateInput} autoFocus
+                                  onChange={e => setStartDateInput(e.target.value)} style={{ flex: 0, width: "150px" }} />
+                                <button className="btn btn-primary" style={{ fontSize: "10px", padding: "3px 10px" }} onClick={() => saveBillStartDate(item.id)}>Save</button>
+                                <button className="btn btn-secondary" style={{ fontSize: "10px", padding: "3px 10px" }} onClick={() => setEditingBillStartDate(null)}>Cancel</button>
+                                {item.startDate && <button className="btn btn-secondary" style={{ fontSize: "10px", padding: "3px 10px", color: "var(--red)" }} onClick={() => clearBillStartDate(item.id)}>Clear</button>}
+                              </div>
+                            ) : isEndDateEditing ? (
                               <div style={{ marginTop: "6px", display: "flex", gap: "6px", alignItems: "center" }}>
                                 <span style={{ fontSize: "11px", color: "var(--text-3)" }}>Ends:</span>
                                 <input type="date" className="input" value={endDateInput} autoFocus
@@ -2021,6 +2053,7 @@ export default function FinancesPage() {
                               </div>
                             ) : (
                               <>
+                                {item.startDate && <span style={{ fontSize: "11px", color: "var(--text-3)", marginLeft: "8px" }}>starts {fmtDate(item.startDate)}</span>}
                                 {item.endDate && <span style={{ fontSize: "11px", color: "var(--text-3)", marginLeft: "8px" }}>ends {fmtDate(item.endDate)}</span>}
                                 <span style={{ fontSize: "11.5px", color: "var(--text-3)", marginLeft: "8px" }}>{schedLabel}</span>
                               </>
@@ -2037,8 +2070,10 @@ export default function FinancesPage() {
                                 onClick={() => setEditingBill({ id: item.id, field: "amount" })}><PencilIcon /></button>
                             </div>
                           )}
-                          <button className="btn-icon bill-act" title="Edit end date" style={{ opacity: 0 }}
-                            onClick={() => { setEditingBillEndDate(item.id); setEndDateInput(item.endDate ?? ""); }}><PencilIcon /></button>
+                          <button className="btn-icon bill-act" title="Edit start date" style={{ opacity: 0, fontSize: "10px", color: "var(--text-3)" }}
+                            onClick={() => { setEditingBillStartDate(item.id); setStartDateInput(item.startDate ?? ""); }}>▶</button>
+                          <button className="btn-icon bill-act" title="Edit end date" style={{ opacity: 0, fontSize: "10px", color: "var(--text-3)" }}
+                            onClick={() => { setEditingBillEndDate(item.id); setEndDateInput(item.endDate ?? ""); }}>⏹</button>
                           <button className="btn btn-secondary" style={{ fontSize: "11px", padding: "3px 9px", flexShrink: 0 }}
                             onClick={() => { const u = { ...finances, items: finances.items.map(it => it.id === item.id ? { ...it, active: !it.active } : it) }; setFinances(u); save(u); }}>
                             {item.active ? "Pause" : "Resume"}
