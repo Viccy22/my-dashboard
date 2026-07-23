@@ -443,7 +443,13 @@ const CATEGORY_META: Record<string, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+function todayStr() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + "T00:00:00");
