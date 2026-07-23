@@ -133,23 +133,10 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   // is a mid-cycle catch-up: 3 OUC payments before the Aug 3 due date, 2 car
   // payments before the Jul 25 due date. From August on, both settle into a
   // clean 4-payments-per-month rhythm on the 1st/8th/15th/22nd.
-  { id:"ouc_catchup1", name:"OUC catch-up (1 of 3)",  amount:-144.01, schedule:{ type:"once", date:"2026-07-15" }, category:"Household", active:true },
-  { id:"ouc_catchup2", name:"OUC catch-up (2 of 3)",  amount:-144.01, schedule:{ type:"once", date:"2026-07-22" }, category:"Household", active:true },
-  { id:"ouc_catchup3", name:"OUC catch-up (3 of 3)",  amount:-144.01, schedule:{ type:"once", date:"2026-07-29" }, category:"Household", active:true },
-  { id:"car_catchup1", name:"Car payment catch-up (1 of 2)", amount:-230.06, schedule:{ type:"once", date:"2026-07-15" }, category:"Transport", active:true },
-  { id:"car_catchup2", name:"Car payment catch-up (2 of 2)", amount:-230.06, schedule:{ type:"once", date:"2026-07-22" }, category:"Transport", active:true },
-  // Ongoing 4x/month structure, starting August 2026. Car ends after the last
-  // November payment (loan payoff); OUC's amount is meant to be edited each
-  // month via the "OUC Monthly Bill" control (splits whatever you enter ÷ 4
-  // across these 4 items) since the real bill varies by season.
-  { id:"car_wk1", name:"Car payment (1 of 4)", amount:-115.03, schedule:{ type:"monthly", dayOfMonth:1  }, category:"Transport", active:true, startDate:"2026-08-01", endDate:"2026-11-22" },
-  { id:"car_wk2", name:"Car payment (2 of 4)", amount:-115.03, schedule:{ type:"monthly", dayOfMonth:8  }, category:"Transport", active:true, startDate:"2026-08-01", endDate:"2026-11-22" },
-  { id:"car_wk3", name:"Car payment (3 of 4)", amount:-115.03, schedule:{ type:"monthly", dayOfMonth:15 }, category:"Transport", active:true, startDate:"2026-08-01", endDate:"2026-11-22" },
-  { id:"car_wk4", name:"Car payment (4 of 4)", amount:-115.03, schedule:{ type:"monthly", dayOfMonth:22 }, category:"Transport", active:true, startDate:"2026-08-01", endDate:"2026-11-22" },
-  { id:"ouc_wk1", name:"OUC electric (1 of 4)", amount:-68.75, schedule:{ type:"monthly", dayOfMonth:1  }, category:"Household", active:true, startDate:"2026-08-01" },
-  { id:"ouc_wk2", name:"OUC electric (2 of 4)", amount:-68.75, schedule:{ type:"monthly", dayOfMonth:8  }, category:"Household", active:true, startDate:"2026-08-01" },
-  { id:"ouc_wk3", name:"OUC electric (3 of 4)", amount:-68.75, schedule:{ type:"monthly", dayOfMonth:15 }, category:"Household", active:true, startDate:"2026-08-01" },
-  { id:"ouc_wk4", name:"OUC electric (4 of 4)", amount:-68.75, schedule:{ type:"monthly", dayOfMonth:22 }, category:"Household", active:true, startDate:"2026-08-01" },
+  { id:"ouc_final", name:"OUC electric (final bill)", amount:-288, schedule:{ type:"once", date:"2026-08-03" }, category:"Household", active:true },
+  { id:"ouc_budget", name:"OUC electric (budget billing)", amount:-269, schedule:{ type:"monthly", dayOfMonth:1 }, category:"Household", active:true, startDate:"2026-09-01" },
+  { id:"car_july", name:"Car payment (July only)", amount:-60, schedule:{ type:"once", date:"2026-07-25" }, category:"Transport", active:true },
+  { id:"car_monthly", name:"Car payment", amount:-460.11, schedule:{ type:"monthly", dayOfMonth:25 }, category:"Transport", active:true, startDate:"2026-08-25", endDate:"2026-11-25" },
   { id:"s4",  name:"Zorro's diet food",             amount:-120,     schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Pets",        active:true },
   { id:"s5",  name:"Groceries",                     amount:-50,      schedule:{ type:"weekly",   dayOfWeek:6   }, category:"Groceries",   active:true },
   { id:"s6",  name:"Gas",                           amount:-40,      schedule:{ type:"monthly",  dayOfMonth:15 }, category:"Transport",   active:true },
@@ -748,30 +735,11 @@ export default function FinancesPage() {
           migrated = true;
         }
 
-        // Convert car payment & OUC electric from monthly lump sums to 4x/month
-        // weekly installments (July 2026 mid-cycle catch-up, then a clean
-        // 1st/8th/15th/22nd rhythm from August on).
-        if (f.items.some(it => it.id === "s1" || it.id === "s3")) {
-          f.items = f.items.filter(it => it.id !== "s1" && it.id !== "s3");
+        // Remove old split payment items (car/OUC weekly + catchups) — replaced with single monthly payments
+        const oldSplitIds = ["ouc_catchup1", "ouc_catchup2", "ouc_catchup3", "car_catchup1", "car_catchup2", "car_wk1", "car_wk2", "car_wk3", "car_wk4", "ouc_wk1", "ouc_wk2", "ouc_wk3", "ouc_wk4"];
+        if (f.items.some(it => oldSplitIds.includes(it.id))) {
+          f.items = f.items.filter(it => !oldSplitIds.includes(it.id));
           migrated = true;
-        }
-        const weeklyBillItems: RecurringItem[] = [
-          { id: "ouc_catchup1", name: "OUC catch-up (1 of 3)", amount: -144.01, schedule: { type: "once", date: "2026-07-15" }, category: "Household", active: true },
-          { id: "ouc_catchup2", name: "OUC catch-up (2 of 3)", amount: -144.01, schedule: { type: "once", date: "2026-07-22" }, category: "Household", active: true },
-          { id: "ouc_catchup3", name: "OUC catch-up (3 of 3)", amount: -144.01, schedule: { type: "once", date: "2026-07-29" }, category: "Household", active: true },
-          { id: "car_catchup1", name: "Car payment catch-up (1 of 2)", amount: -230.06, schedule: { type: "once", date: "2026-07-15" }, category: "Transport", active: true },
-          { id: "car_catchup2", name: "Car payment catch-up (2 of 2)", amount: -230.06, schedule: { type: "once", date: "2026-07-22" }, category: "Transport", active: true },
-          { id: "car_wk1", name: "Car payment (1 of 4)", amount: -115.03, schedule: { type: "monthly", dayOfMonth: 1 },  category: "Transport", active: true, startDate: "2026-08-01", endDate: "2026-11-22" },
-          { id: "car_wk2", name: "Car payment (2 of 4)", amount: -115.03, schedule: { type: "monthly", dayOfMonth: 8 },  category: "Transport", active: true, startDate: "2026-08-01", endDate: "2026-11-22" },
-          { id: "car_wk3", name: "Car payment (3 of 4)", amount: -115.03, schedule: { type: "monthly", dayOfMonth: 15 }, category: "Transport", active: true, startDate: "2026-08-01", endDate: "2026-11-22" },
-          { id: "car_wk4", name: "Car payment (4 of 4)", amount: -115.03, schedule: { type: "monthly", dayOfMonth: 22 }, category: "Transport", active: true, startDate: "2026-08-01", endDate: "2026-11-22" },
-          { id: "ouc_wk1", name: "OUC electric (1 of 4)", amount: -68.75, schedule: { type: "monthly", dayOfMonth: 1 },  category: "Household", active: true, startDate: "2026-08-01" },
-          { id: "ouc_wk2", name: "OUC electric (2 of 4)", amount: -68.75, schedule: { type: "monthly", dayOfMonth: 8 },  category: "Household", active: true, startDate: "2026-08-01" },
-          { id: "ouc_wk3", name: "OUC electric (3 of 4)", amount: -68.75, schedule: { type: "monthly", dayOfMonth: 15 }, category: "Household", active: true, startDate: "2026-08-01" },
-          { id: "ouc_wk4", name: "OUC electric (4 of 4)", amount: -68.75, schedule: { type: "monthly", dayOfMonth: 22 }, category: "Household", active: true, startDate: "2026-08-01" },
-        ];
-        for (const wi of weeklyBillItems) {
-          if (!f.items.some(it => it.id === wi.id)) { f.items = [...f.items, wi]; migrated = true; }
         }
 
         setFinances(f);
@@ -1061,13 +1029,12 @@ export default function FinancesPage() {
     return rows[rows.length - 1].balance;
   }, [forecastDate, allRows, finances.currentBalance]);
 
-  const lowDays    = useMemo(() => allRows.filter(r => !r.isPast && r.balance < 300), [allRows]);
+  const lowDays    = useMemo(() => displayRows.filter(r => !r.isPast && r.balance < 300), [displayRows]);
   const nextPayday = useMemo(() => allRows.find(r => r.isPayday && r.date >= todayStr()), [allRows]);
   const lowestPoint = useMemo(() => {
-    const future = allRows.filter(r => r.date >= todayStr());
-    if (!future.length) return null;
-    return future.reduce((min, r) => r.balance < min.balance ? r : min, future[0]);
-  }, [allRows]);
+    if (displayRows.length === 0) return null;
+    return displayRows.reduce((min, r) => r.balance < min.balance ? r : min, displayRows[0]);
+  }, [displayRows]);
 
   const upcomingMoves = useMemo(() => {
     const today = todayStr();
