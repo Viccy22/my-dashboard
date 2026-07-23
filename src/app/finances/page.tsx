@@ -630,6 +630,9 @@ export default function FinancesPage() {
 
   // ── BNPL state ────────────────────────────────────────────────────────────
   const [bnplPlans, setBNPLPlans] = useState<BNPLPlan[]>(SEED_BNPL);
+  const [editingBnplId, setEditingBnplId] = useState<string | null>(null);
+  const [bnplPaymentsInput, setBnplPaymentsInput] = useState("");
+  const [expandedBnplId, setExpandedBnplId] = useState<string | null>(null);
 
   // ── Savings state ──────────────────────────────────────────────────────────
   const [savings,        setSavings]        = useState<SavingsData>({ totalBalance: null, buckets: [] });
@@ -817,6 +820,86 @@ export default function FinancesPage() {
     } catch { setStatus("error"); }
     finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
   }, [savings]);
+
+  // ── BNPL ──────────────────────────────────────────────────────────────────
+  const saveBnplPlans = useCallback(async (plans: BNPLPlan[]) => {
+    setStatus("saving");
+    if (timer.current) clearTimeout(timer.current);
+    const baseFin = (rawDataRef.current.finances ?? seedFinances()) as FinancesData;
+    const fin = { ...baseFin, bnpl: { plans } };
+    const newData = { ...rawDataRef.current, finances: fin };
+    rawDataRef.current = newData;
+    setFinances(fin);
+    setBNPLPlans(plans);
+    try {
+      const res = await fetch("/api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: newData }) });
+      if (!res.ok) throw new Error();
+      setStatus("saved");
+    } catch { setStatus("error"); }
+    finally { timer.current = setTimeout(() => setStatus("idle"), 2000); }
+  }, []);
+
+  // Change how many payments are left on a BNPL plan. Trims from the latest
+  // dated future installment when reducing; extends at the existing cadence
+  // (interval between the last two installments, or 30 days) when increasing.
+  const updateBnplPaymentsRemaining = (planId: string, newCount: number) => {
+    if (newCount < 0) return;
+    const plan = bnplPlans.find(p => p.id === planId);
+    if (!plan) return;
+    const today = todayStr();
+    const past = plan.installments.filter(i => i.date < today).sort((a, b) => a.date.localeCompare(b.date));
+    let future = plan.installments.filter(i => i.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+
+    if (newCount <= future.length) {
+      future = future.slice(0, newCount);
+    } else {
+      const last = future[future.length - 1] ?? past[past.length - 1];
+      let lastDate = last?.date ?? today;
+      const interval = future.length >= 2
+        ? Math.round((new Date(future[1].date + "T00:00:00").getTime() - new Date(future[0].date + "T00:00:00").getTime()) / 86400000)
+        : 30;
+      const amount = plan.regularInstallment;
+      while (future.length < newCount) {
+        lastDate = addDays(lastDate, interval || 30);
+        future.push({ date: lastDate, amount, isEstimated: true });
+      }
+    }
+
+    const newInstallments = [...past, ...future];
+    const remainingBalance = Math.round(future.reduce((s, i) => s + i.amount, 0) * 100) / 100;
+    const updated: BNPLPlan = {
+      ...plan,
+      installments: newInstallments,
+      paymentsRemaining: future.length,
+      totalInstallments: past.length + future.length,
+      remainingBalance,
+      nextDueDate: future[0]?.date ?? plan.nextDueDate,
+      finalPaymentDate: future[future.length - 1]?.date ?? plan.finalPaymentDate,
+      status: future.length === 0 ? "completed" : "active",
+    };
+    const updatedPlans = bnplPlans.map(p => p.id === planId ? updated : p);
+    setEditingBnplId(null);
+    saveBnplPlans(updatedPlans);
+  };
+
+  const deleteBnplInstallment = (planId: string, date: string) => {
+    const plan = bnplPlans.find(p => p.id === planId);
+    if (!plan) return;
+    const newInstallments = plan.installments.filter(i => i.date !== date);
+    const today = todayStr();
+    const future = newInstallments.filter(i => i.date >= today);
+    const updated: BNPLPlan = {
+      ...plan,
+      installments: newInstallments,
+      paymentsRemaining: future.length,
+      totalInstallments: newInstallments.length,
+      remainingBalance: Math.round(future.reduce((s, i) => s + i.amount, 0) * 100) / 100,
+      nextDueDate: future[0]?.date ?? plan.nextDueDate,
+      finalPaymentDate: future[future.length - 1]?.date ?? plan.finalPaymentDate,
+      status: future.length === 0 ? "completed" : "active",
+    };
+    saveBnplPlans(bnplPlans.map(p => p.id === planId ? updated : p));
+  };
 
   // ── Balance ───────────────────────────────────────────────────────────────
   const saveBalance = () => {
@@ -1889,22 +1972,55 @@ export default function FinancesPage() {
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {bnplPlans.map(plan => {
-                    const completedInstallments = plan.installments.filter(i => i.date < todayStr()).length;
-                    const progress = (completedInstallments / plan.totalInstallments) * 100;
-                    const nextInstallment = plan.installments.find(i => i.date >= todayStr());
+                    const today = todayStr();
+                    const futureInstallments = plan.installments.filter(i => i.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+                    const pastInstallments = plan.installments.filter(i => i.date < today).sort((a, b) => a.date.localeCompare(b.date));
+                    const completedInstallments = pastInstallments.length;
+                    const paymentsLeft = futureInstallments.length; // always derived live — never trust the stored count
+                    const progress = plan.totalInstallments > 0 ? (completedInstallments / plan.totalInstallments) * 100 : 100;
+                    const nextInstallment = futureInstallments[0];
+                    const isExpanded = expandedBnplId === plan.id;
                     return (
                       <div key={plan.id} style={{ background: "var(--surface-raised)", borderRadius: "6px", padding: "10px", border: "1px solid var(--border)" }}>
                         <div className="row" style={{ padding: "0", alignItems: "flex-start", marginBottom: "8px" }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)", marginBottom: "2px" }}>{plan.merchant}</div>
-                            <div style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "2px" }}>{plan.provider} • {plan.paymentsRemaining} payments left</div>
+                            <div style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span>{plan.provider} •</span>
+                              {editingBnplId === plan.id ? (
+                                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                  <input
+                                    type="number" min="0" step="1" autoFocus
+                                    value={bnplPaymentsInput}
+                                    onChange={e => setBnplPaymentsInput(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === "Enter") { const n = parseInt(bnplPaymentsInput, 10); if (!isNaN(n)) updateBnplPaymentsRemaining(plan.id, n); }
+                                      if (e.key === "Escape") setEditingBnplId(null);
+                                    }}
+                                    style={{ width: "48px", background: "var(--surface-overlay)", border: "1px solid var(--accent)", borderRadius: "4px", color: "var(--text)", fontSize: "11px", padding: "1px 4px", fontFamily: "inherit", outline: "none" }}
+                                  />
+                                  <span>payments left</span>
+                                  <button className="btn-icon" title="Save" style={{ color: "var(--green)" }}
+                                    onClick={() => { const n = parseInt(bnplPaymentsInput, 10); if (!isNaN(n)) updateBnplPaymentsRemaining(plan.id, n); }}><CheckIcon /></button>
+                                  <button className="btn-icon" title="Cancel" onClick={() => setEditingBnplId(null)}><XIcon /></button>
+                                </span>
+                              ) : (
+                                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                  {paymentsLeft} payments left
+                                  <button className="btn-icon" title="Edit payments left" style={{ opacity: 0.5 }}
+                                    onClick={() => { setEditingBnplId(plan.id); setBnplPaymentsInput(String(paymentsLeft)); }}><PencilIcon /></button>
+                                </span>
+                              )}
+                            </div>
                             <div style={{ fontSize: "11px", color: "var(--text-3)" }}>Original: {fmt$(plan.originalAmount)} | Paid: {fmt$(plan.paidToDate)} | Remaining: {fmt$(plan.remainingBalance)}</div>
                           </div>
                           <div style={{ textAlign: "right" }}>
                             <div style={{ fontSize: "13.5px", fontWeight: 600, fontVariantNumeric: "tabular-nums", color: "var(--text-2)", marginBottom: "4px" }}>{fmt$(plan.remainingBalance)}</div>
-                            <div style={{ fontSize: "10px", color: "var(--text-3)", background: "var(--surface-overlay)", padding: "2px 6px", borderRadius: "3px", display: "inline-block" }}>
-                              {completedInstallments}/{plan.totalInstallments}
-                            </div>
+                            <button className="btn-icon" title={isExpanded ? "Hide installments" : "Show installments"}
+                              style={{ fontSize: "10px", color: "var(--text-3)", background: "var(--surface-overlay)", padding: "2px 6px", borderRadius: "3px", display: "inline-block", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                              onClick={() => setExpandedBnplId(isExpanded ? null : plan.id)}>
+                              {completedInstallments}/{plan.totalInstallments} {isExpanded ? "▲" : "▼"}
+                            </button>
                           </div>
                         </div>
                         <div style={{ background: "var(--surface-overlay)", height: "4px", borderRadius: "2px", overflow: "hidden", marginBottom: "8px" }}>
@@ -1913,6 +2029,23 @@ export default function FinancesPage() {
                         {nextInstallment && (
                           <div style={{ fontSize: "11px", color: "var(--text-3)" }}>
                             Next: {fmt$(nextInstallment.amount)} on {fmtDate(nextInstallment.date)}{nextInstallment.isEstimated ? " (est.)" : ""}
+                          </div>
+                        )}
+                        {isExpanded && (
+                          <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                            {plan.installments.length === 0 && <div style={{ fontSize: "11px", color: "var(--text-3)" }}>No installments.</div>}
+                            {[...plan.installments].sort((a, b) => a.date.localeCompare(b.date)).map(inst => (
+                              <div key={inst.date} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11.5px" }}>
+                                <span style={{ color: inst.date < today ? "var(--text-3)" : "var(--text-2)", opacity: inst.date < today ? 0.6 : 1 }}>
+                                  {fmtDate(inst.date)}{inst.isEstimated ? " (est.)" : ""}{inst.date < today ? " ✓" : ""}
+                                </span>
+                                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--text-2)" }}>{fmt$(inst.amount)}</span>
+                                  <button className="btn-icon" title="Remove this installment" style={{ opacity: 0.5 }}
+                                    onClick={() => deleteBnplInstallment(plan.id, inst.date)}><XIcon /></button>
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
