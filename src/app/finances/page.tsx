@@ -690,7 +690,7 @@ export default function FinancesPage() {
   const [editingBill, setEditingBill] = useState<EditingBill | null>(null);
 
   // ── Date override state ────────────────────────────────────────────────────
-  const [editingDateOverride, setEditingDateOverride] = useState<{ itemId: string; scheduledDate: string } | null>(null);
+  const [editingDateMove, setEditingDateMove] = useState<{ source: RowSource; currentDate: string; description: string } | null>(null);
   const [dateOverrideInput, setDateOverrideInput] = useState("");
   const [editingBillEndDate, setEditingBillEndDate] = useState<string | null>(null);
   const [endDateInput, setEndDateInput] = useState("");
@@ -1137,30 +1137,50 @@ export default function FinancesPage() {
     setFinances(updated); setEditingBillStartDate(null); setStartDateInput(""); save(updated);
   };
 
-  // ── Move payment date (date override) ───────────────────────────────────────
-  const saveDateOverride = () => {
-    if (!editingDateOverride) return;
+  // ── Move a payment to a different date — works for any row type ──────────────
+  // Recurring items use a one-time dateOverride (so future occurrences stay on
+  // schedule). Transactions and BNPL installments have their own date edited
+  // directly since each is a single dated event.
+  const saveDateMove = () => {
+    if (!editingDateMove) return;
     const newDate = dateOverrideInput.trim();
     if (!newDate) return;
-    const updated = { ...finances, dateOverrides: [...(finances.dateOverrides ?? [])] };
-    const existing = updated.dateOverrides.find(d => d.itemId === editingDateOverride.itemId && d.scheduledDate === editingDateOverride.scheduledDate);
-    if (existing) {
-      updated.dateOverrides = updated.dateOverrides.map(d =>
-        d.itemId === editingDateOverride.itemId && d.scheduledDate === editingDateOverride.scheduledDate
-          ? { ...d, newDate }
-          : d
-      );
-    } else {
-      updated.dateOverrides.push({
-        id: crypto.randomUUID(),
-        itemId: editingDateOverride.itemId,
-        scheduledDate: editingDateOverride.scheduledDate,
-        newDate,
+    const { source, currentDate } = editingDateMove;
+
+    if (source.type === "recurring") {
+      const updated = { ...finances, dateOverrides: [...(finances.dateOverrides ?? [])] };
+      const existing = updated.dateOverrides.find(d => d.itemId === source.itemId && d.scheduledDate === currentDate);
+      if (existing) {
+        updated.dateOverrides = updated.dateOverrides.map(d =>
+          d.itemId === source.itemId && d.scheduledDate === currentDate ? { ...d, newDate } : d
+        );
+      } else {
+        updated.dateOverrides.push({ id: crypto.randomUUID(), itemId: source.itemId, scheduledDate: currentDate, newDate });
+      }
+      setFinances(updated); save(updated);
+    } else if (source.type === "transaction") {
+      const updated = { ...finances, transactions: finances.transactions.map(t => t.id === source.txnId ? { ...t, date: newDate } : t) };
+      setFinances(updated); save(updated);
+    } else if (source.type === "bnpl") {
+      const today = todayStr();
+      const updatedPlans = bnplPlans.map(p => {
+        if (p.id !== source.planId) return p;
+        const newInstallments = p.installments.map(inst => inst.date === currentDate ? { ...inst, date: newDate } : inst);
+        const sorted = [...newInstallments].sort((a, b) => a.date.localeCompare(b.date));
+        const future = sorted.filter(i => i.date >= today);
+        return {
+          ...p,
+          installments: newInstallments,
+          nextDueDate: future[0]?.date ?? p.nextDueDate,
+          finalPaymentDate: sorted[sorted.length - 1]?.date ?? p.finalPaymentDate,
+        };
       });
+      saveBnplPlans(updatedPlans);
     }
-    setFinances(updated); setEditingDateOverride(null); setDateOverrideInput(""); save(updated);
+    setEditingDateMove(null); setDateOverrideInput("");
   };
 
+  // Recurring-only: clear the one-time date override, restoring the schedule.
   const removeDateOverride = (itemId: string, scheduledDate: string) => {
     const updated = { ...finances, dateOverrides: (finances.dateOverrides ?? []).filter(d => !(d.itemId === itemId && d.scheduledDate === scheduledDate)) };
     setFinances(updated); save(updated);
@@ -1373,23 +1393,28 @@ export default function FinancesPage() {
         </div>
       )}
 
-      {/* ── Date Override Editor ── */}
-      {editingDateOverride && (
+      {/* ── Date Move Editor ── */}
+      {editingDateMove && (
         <div className="card" style={{ marginBottom: "16px", background: "var(--surface-raised)", border: "2px solid var(--accent)" }}>
-          <p className="card-title" style={{ marginBottom: "12px" }}>Move Payment Date</p>
+          <p className="card-title" style={{ marginBottom: "4px" }}>Move Payment Date</p>
+          <p style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "12px" }}>{editingDateMove.description}</p>
           <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "12px" }}>
-            <span style={{ fontSize: "13px", color: "var(--text)" }}>Scheduled: <strong>{fmtDate(editingDateOverride.scheduledDate)}</strong></span>
+            <span style={{ fontSize: "13px", color: "var(--text)" }}>Currently: <strong>{fmtDate(editingDateMove.currentDate)}</strong></span>
             <span style={{ fontSize: "13px", color: "var(--text-3)" }}>→ Move to:</span>
             <input type="date" className="input" value={dateOverrideInput} autoFocus
               onChange={e => setDateOverrideInput(e.target.value)} style={{ flex: 0, width: "150px" }} />
-            <button className="btn btn-primary" style={{ fontSize: "12px", padding: "6px 12px" }} onClick={saveDateOverride}>Move Payment</button>
-            <button className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 12px" }} onClick={() => { setEditingDateOverride(null); setDateOverrideInput(""); }}>Cancel</button>
-            {(finances.dateOverrides ?? []).some(d => d.itemId === editingDateOverride.itemId && d.scheduledDate === editingDateOverride.scheduledDate) && (
+            <button className="btn btn-primary" style={{ fontSize: "12px", padding: "6px 12px" }} onClick={saveDateMove}>Move Payment</button>
+            <button className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 12px" }} onClick={() => { setEditingDateMove(null); setDateOverrideInput(""); }}>Cancel</button>
+            {editingDateMove.source.type === "recurring" && (finances.dateOverrides ?? []).some(d => d.itemId === (editingDateMove.source as { type: "recurring"; itemId: string }).itemId && d.scheduledDate === editingDateMove.currentDate) && (
               <button className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 12px", color: "var(--red)" }}
-                onClick={() => { removeDateOverride(editingDateOverride.itemId, editingDateOverride.scheduledDate); setEditingDateOverride(null); }}>Remove Override</button>
+                onClick={() => { const src = editingDateMove.source as { type: "recurring"; itemId: string }; removeDateOverride(src.itemId, editingDateMove.currentDate); setEditingDateMove(null); }}>Remove Override</button>
             )}
           </div>
-          <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "0" }}>This moves only this one occurrence. Future occurrences will follow the normal schedule.</p>
+          <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "0" }}>
+            {editingDateMove.source.type === "recurring"
+              ? "This moves only this one occurrence. Future occurrences will follow the normal schedule."
+              : "This moves this single payment to the new date."}
+          </p>
         </div>
       )}
 
@@ -1438,8 +1463,8 @@ export default function FinancesPage() {
 
           {/* Headers + Rows (horizontal scroll on mobile) */}
           <div className="mobile-scroll-x">
-          <div style={{ minWidth: "480px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "80px 36px 1fr 130px 100px 28px", gap: "0 6px", padding: "5px 8px", borderBottom: "1px solid var(--border)", marginBottom: "2px" }}>
+          <div style={{ minWidth: "520px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "80px 36px 1fr 120px 96px 64px", gap: "0 6px", padding: "5px 8px", borderBottom: "1px solid var(--border)", marginBottom: "2px" }}>
             {["Date","Day","Description","Amount","Balance",""].map(h => (
               <span key={h} style={{ fontSize: "10px", fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</span>
             ))}
@@ -1459,7 +1484,7 @@ export default function FinancesPage() {
               return (
                 <div key={rowKey} style={{
                   display: "grid",
-                  gridTemplateColumns: "80px 36px 1fr 130px 100px 28px",
+                  gridTemplateColumns: "80px 36px 1fr 120px 96px 64px",
                   gap: "0 6px",
                   padding: "5px 8px",
                   borderRadius: "4px",
@@ -1497,37 +1522,30 @@ export default function FinancesPage() {
                     {fmt$(row.balance)}
                   </span>
 
-                  {/* Edit / clear button */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}>
+                  {/* Edit amount + move date buttons — always visible (touch-friendly) */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "2px" }}>
                     {canEdit && !isEditing && (
                       <>
-                        {row.source.type === "recurring" && (
-                          <button className="btn-icon" title="Move this payment to a different date"
-                            style={{ opacity: 0.3 }}
-                            onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                            onMouseLeave={e => (e.currentTarget.style.opacity = "0.3")}
-                            onClick={() => {
-                              if (row.source.type === "recurring") {
-                                const itemId = row.source.itemId;
-                                setEditingDateOverride({ itemId, scheduledDate: row.date });
-                                const existing = (finances.dateOverrides ?? []).find(d => d.itemId === itemId && d.scheduledDate === row.date);
-                                setDateOverrideInput(existing?.newDate ?? "");
-                              }
-                            }}>
-                            📅
-                          </button>
-                        )}
-                        {hasOverride ? (
+                        <button className="btn-icon" title="Move this payment to a different date"
+                          style={{ opacity: 0.6, padding: "2px" }}
+                          onClick={() => {
+                            setEditingDateMove({ source: row.source, currentDate: row.date, description: row.description });
+                            const existing = row.source.type === "recurring"
+                              ? (finances.dateOverrides ?? []).find(d => d.itemId === (row.source as { type: "recurring"; itemId: string }).itemId && d.scheduledDate === row.date)
+                              : undefined;
+                            setDateOverrideInput(existing?.newDate ?? "");
+                          }}>
+                          📅
+                        </button>
+                        {row.source.type === "bnpl" ? null : hasOverride ? (
                           <button className="btn-icon" title="Clear edit (restore default)"
-                            style={{ color: "var(--accent-text)", opacity: 0.7 }}
+                            style={{ color: "var(--accent-text)", opacity: 0.8, padding: "2px" }}
                             onClick={() => clearOverride((row.source as { type: "recurring"; itemId: string }).itemId, row.date)}>
                             <XIcon />
                           </button>
                         ) : (
                           <button className="btn-icon" title="Edit this amount (one-time)"
-                            style={{ opacity: 0.3 }}
-                            onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                            onMouseLeave={e => (e.currentTarget.style.opacity = "0.3")}
+                            style={{ opacity: 0.6, padding: "2px" }}
                             onClick={() => setEditingRow({ date: row.date, source: row.source, currentAmount: row.amount ?? 0 })}>
                             <PencilIcon />
                           </button>
