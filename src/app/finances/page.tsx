@@ -139,7 +139,9 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"ouc_final", name:"OUC electric (final bill)", amount:-288, schedule:{ type:"once", date:"2026-08-03" }, category:"Household", active:true },
   { id:"ouc_budget", name:"OUC electric (budget billing)", amount:-269, schedule:{ type:"monthly", dayOfMonth:1 }, category:"Household", active:true, startDate:"2026-09-01" },
   { id:"car_july", name:"Car payment (July only)", amount:-60, schedule:{ type:"once", date:"2026-07-25" }, category:"Transport", active:true },
-  { id:"car_monthly", name:"Car payment", amount:-460.11, schedule:{ type:"monthly", dayOfMonth:25 }, category:"Transport", active:true, startDate:"2026-08-25", endDate:"2026-11-25" },
+  // 9 remaining payments Aug 2026 → Apr 2027 (extends past the expected Nov
+  // payoff because of the finance charges). July's $60 is already paid.
+  { id:"car_monthly", name:"Car payment", amount:-460.11, schedule:{ type:"monthly", dayOfMonth:25 }, category:"Transport", active:true, startDate:"2026-08-25", endDate:"2027-04-25" },
   { id:"s4",  name:"Zorro's diet food",             amount:-120,     schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Pets",        active:true },
   { id:"s5",  name:"Groceries",                     amount:-50,      schedule:{ type:"weekly",   dayOfWeek:6   }, category:"Groceries",   active:true },
   { id:"s6",  name:"Gas",                           amount:-40,      schedule:{ type:"monthly",  dayOfMonth:15 }, category:"Transport",   active:true },
@@ -628,7 +630,7 @@ function AmountEditor({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type EditingRow = { date: string; source: RowSource; currentAmount: number };
+type EditingRow = { date: string; source: RowSource; currentAmount: number; description: string };
 type EditingBill = { id: string; field: "amount" };
 
 export default function FinancesPage() {
@@ -770,6 +772,14 @@ export default function FinancesPage() {
         // (Previously these lived only in PLAN_ITEMS, injected at render time.)
         for (const p of PLAN_ITEMS) {
           if (!f.items.some(it => it.id === p.id)) { f.items = [...f.items, p]; migrated = true; }
+        }
+
+        // Car loan runs to Apr 2027, not Nov 2026 — 9 payments remain after the
+        // finance charges. Extend any stored car_monthly still ending in Nov.
+        const carItem = f.items.find(it => it.id === "car_monthly");
+        if (carItem && carItem.endDate === "2026-11-25") {
+          f.items = f.items.map(it => it.id === "car_monthly" ? { ...it, endDate: "2027-04-25" } : it);
+          migrated = true;
         }
 
         setFinances(f);
@@ -1393,28 +1403,48 @@ export default function FinancesPage() {
         </div>
       )}
 
-      {/* ── Date Move Editor ── */}
-      {editingDateMove && (
-        <div className="card" style={{ marginBottom: "16px", background: "var(--surface-raised)", border: "2px solid var(--accent)" }}>
-          <p className="card-title" style={{ marginBottom: "4px" }}>Move Payment Date</p>
-          <p style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "12px" }}>{editingDateMove.description}</p>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "12px" }}>
-            <span style={{ fontSize: "13px", color: "var(--text)" }}>Currently: <strong>{fmtDate(editingDateMove.currentDate)}</strong></span>
-            <span style={{ fontSize: "13px", color: "var(--text-3)" }}>→ Move to:</span>
-            <input type="date" className="input" value={dateOverrideInput} autoFocus
-              onChange={e => setDateOverrideInput(e.target.value)} style={{ flex: 0, width: "150px" }} />
-            <button className="btn btn-primary" style={{ fontSize: "12px", padding: "6px 12px" }} onClick={saveDateMove}>Move Payment</button>
-            <button className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 12px" }} onClick={() => { setEditingDateMove(null); setDateOverrideInput(""); }}>Cancel</button>
-            {editingDateMove.source.type === "recurring" && (finances.dateOverrides ?? []).some(d => d.itemId === (editingDateMove.source as { type: "recurring"; itemId: string }).itemId && d.scheduledDate === editingDateMove.currentDate) && (
-              <button className="btn btn-secondary" style={{ fontSize: "12px", padding: "6px 12px", color: "var(--red)" }}
-                onClick={() => { const src = editingDateMove.source as { type: "recurring"; itemId: string }; removeDateOverride(src.itemId, editingDateMove.currentDate); setEditingDateMove(null); }}>Remove Override</button>
-            )}
+      {/* ── Amount Edit Modal (centered overlay — works on mobile regardless of scroll) ── */}
+      {editingRow && (
+        <div onClick={() => setEditingRow(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: "var(--surface)", border: "2px solid var(--accent)", borderRadius: "12px", padding: "20px", width: "100%", maxWidth: "360px", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+            <p className="card-title" style={{ marginBottom: "2px" }}>Edit amount</p>
+            <p style={{ fontSize: "13px", color: "var(--text-2)", marginBottom: "6px" }}>{editingRow.description}</p>
+            <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "16px" }}>on {fmtDate(editingRow.date)} — one-time change</p>
+            <AmountEditor current={editingRow.currentAmount} onSave={saveRowEdit} onCancel={() => setEditingRow(null)} />
           </div>
-          <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginBottom: "0" }}>
-            {editingDateMove.source.type === "recurring"
-              ? "This moves only this one occurrence. Future occurrences will follow the normal schedule."
-              : "This moves this single payment to the new date."}
-          </p>
+        </div>
+      )}
+
+      {/* ── Date Move Modal (centered overlay — works on mobile regardless of scroll) ── */}
+      {editingDateMove && (
+        <div onClick={() => { setEditingDateMove(null); setDateOverrideInput(""); }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: "var(--surface)", border: "2px solid var(--accent)", borderRadius: "12px", padding: "20px", width: "100%", maxWidth: "360px", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+            <p className="card-title" style={{ marginBottom: "2px" }}>Move payment date</p>
+            <p style={{ fontSize: "13px", color: "var(--text-2)", marginBottom: "14px" }}>{editingDateMove.description}</p>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "14px" }}>
+              <span style={{ fontSize: "13px", color: "var(--text)" }}>Currently: <strong>{fmtDate(editingDateMove.currentDate)}</strong></span>
+              <span style={{ fontSize: "13px", color: "var(--text-3)" }}>→</span>
+              <input type="date" className="input" value={dateOverrideInput} autoFocus
+                onChange={e => setDateOverrideInput(e.target.value)} style={{ flex: "1 1 150px", minWidth: "150px" }} />
+            </div>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button className="btn btn-primary" style={{ fontSize: "13px", padding: "8px 16px" }} onClick={saveDateMove}>Move Payment</button>
+              <button className="btn btn-secondary" style={{ fontSize: "13px", padding: "8px 16px" }} onClick={() => { setEditingDateMove(null); setDateOverrideInput(""); }}>Cancel</button>
+              {editingDateMove.source.type === "recurring" && (finances.dateOverrides ?? []).some(d => d.itemId === (editingDateMove.source as { type: "recurring"; itemId: string }).itemId && d.scheduledDate === editingDateMove.currentDate) && (
+                <button className="btn btn-secondary" style={{ fontSize: "13px", padding: "8px 16px", color: "var(--red)" }}
+                  onClick={() => { const src = editingDateMove.source as { type: "recurring"; itemId: string }; removeDateOverride(src.itemId, editingDateMove.currentDate); setEditingDateMove(null); }}>Remove Override</button>
+              )}
+            </div>
+            <p style={{ fontSize: "11.5px", color: "var(--text-3)", marginTop: "14px", marginBottom: "0" }}>
+              {editingDateMove.source.type === "recurring"
+                ? "Moves only this one occurrence. Future occurrences stay on the normal schedule."
+                : "Moves this single payment to the new date."}
+            </p>
+          </div>
         </div>
       )}
 
@@ -1474,9 +1504,6 @@ export default function FinancesPage() {
           <div style={{ maxHeight: "520px", overflowY: "auto" }}>
             {displayRows.map((row, i) => {
               const rowKey = `${row.date}-${i}`;
-              const isEditing = editingRow && editingRow.date === row.date &&
-                ((row.source.type === "recurring" && editingRow.source.type === "recurring" && row.source.itemId === (editingRow.source as { type: "recurring"; itemId: string }).itemId) ||
-                 (row.source.type === "transaction" && editingRow.source.type === "transaction" && row.source.txnId === (editingRow.source as { type: "transaction"; txnId: string }).txnId));
               const hasOverride = row.source.type === "recurring" &&
                 finances.overrides.some(o => o.itemId === (row.source as { type: "recurring"; itemId: string }).itemId && o.date === row.date);
               const canEdit = row.source.type !== "empty";
@@ -1500,21 +1527,13 @@ export default function FinancesPage() {
                     {hasOverride && <span style={{ fontSize: "10px", color: "var(--accent-text)", marginLeft: "6px", fontWeight: 600 }}>edited</span>}
                   </span>
 
-                  {/* Amount — inline editor or display */}
+                  {/* Amount — display only; editing happens in a modal */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                    {isEditing ? (
-                      <AmountEditor
-                        current={editingRow!.currentAmount}
-                        onSave={saveRowEdit}
-                        onCancel={() => setEditingRow(null)}
-                      />
-                    ) : (
-                      <span style={{ fontSize: "13px", fontVariantNumeric: "tabular-nums",
-                        color: row.amount == null ? "transparent" : row.isTransfer ? "var(--accent)" : row.amount > 0 ? "var(--green)" : "var(--red)",
-                        fontWeight: 500 }}>
-                        {row.amount != null ? fmt$(row.amount) : ""}
-                      </span>
-                    )}
+                    <span style={{ fontSize: "13px", fontVariantNumeric: "tabular-nums",
+                      color: row.amount == null ? "transparent" : row.isTransfer ? "var(--accent)" : row.amount > 0 ? "var(--green)" : "var(--red)",
+                      fontWeight: 500 }}>
+                      {row.amount != null ? fmt$(row.amount) : ""}
+                    </span>
                   </div>
 
                   <span style={{ fontSize: "13px", fontVariantNumeric: "tabular-nums", textAlign: "right", fontWeight: 600,
@@ -1524,7 +1543,7 @@ export default function FinancesPage() {
 
                   {/* Edit amount + move date buttons — always visible (touch-friendly) */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "2px" }}>
-                    {canEdit && !isEditing && (
+                    {canEdit && (
                       <>
                         <button className="btn-icon" title="Move this payment to a different date"
                           style={{ opacity: 0.6, padding: "2px" }}
@@ -1546,7 +1565,7 @@ export default function FinancesPage() {
                         ) : (
                           <button className="btn-icon" title="Edit this amount (one-time)"
                             style={{ opacity: 0.6, padding: "2px" }}
-                            onClick={() => setEditingRow({ date: row.date, source: row.source, currentAmount: row.amount ?? 0 })}>
+                            onClick={() => setEditingRow({ date: row.date, source: row.source, currentAmount: row.amount ?? 0, description: row.description })}>
                             <PencilIcon />
                           </button>
                         )}
