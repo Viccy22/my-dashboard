@@ -145,13 +145,13 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s4",  name:"Zorro's diet food",             amount:-120,     schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Pets",        active:true },
   { id:"s5",  name:"Groceries",                     amount:-50,      schedule:{ type:"weekly",   dayOfWeek:6   }, category:"Groceries",   active:true },
   { id:"s6",  name:"Gas",                           amount:-40,      schedule:{ type:"monthly",  dayOfMonth:15 }, category:"Transport",   active:true },
-  { id:"s7",  name:"Ally CC (min)",                 amount:-224,     schedule:{ type:"monthly",  dayOfMonth:5  }, category:"Credit Card", active:true, endDate:"2026-08-31" },
-  { id:"s8",  name:"Capital One Savor (min)",       amount:-110,     schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-08-31" },
-  { id:"s9",  name:"Capital One Platinum (min)",    amount:-25,      schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-08-31" },
-  { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,      schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true, endDate:"2026-08-31" },
+  { id:"s7",  name:"Ally CC (min)",                 amount:-224,     schedule:{ type:"monthly",  dayOfMonth:5  }, category:"Credit Card", active:true, endDate:"2026-10-31" },
+  { id:"s8",  name:"Capital One Savor (min)",       amount:-110,     schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-10-31" },
+  { id:"s9",  name:"Capital One Platinum (min)",    amount:-25,      schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-10-31" },
+  { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,      schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true, endDate:"2026-10-31" },
   { id:"s13", name:"Disney Annual Pass",            amount:-67,      schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Subscriptions",active:true },
   { id:"s14", name:"Fitness membership",            amount:-40,      schedule:{ type:"monthly",  dayOfMonth:22 }, category:"Subscriptions",active:true },
-  { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-08-31" },
+  { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-10-31" },
   { id:"s_sinking", name:"Sinking funds → HYSA",  amount:-512, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2026-09-01", isTransfer:true },
   { id:"s_nelnet",  name:"Student loan → Nelnet", amount:-281, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-01-01", isTransfer:true },
   { id:"s_hsa",     name:"HSA contribution",       amount:-200, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-07-01", isTransfer:true },
@@ -711,7 +711,7 @@ export default function FinancesPage() {
         if (!f.overrides) f.overrides = [];
         // Auto-add Care Credit bill if missing
         if (!f.items.some(it => it.name.toLowerCase().includes("care credit"))) {
-          f.items = [...f.items, { id: "carecredit_min", name: "Care Credit (min)", amount: -97, schedule: { type: "monthly", dayOfMonth: 19 }, category: "Credit Card", active: true, endDate: "2026-08-31" }];
+          f.items = [...f.items, { id: "carecredit_min", name: "Care Credit (min)", amount: -97, schedule: { type: "monthly", dayOfMonth: 19 }, category: "Credit Card", active: true, endDate: "2026-10-31" }];
         }
 
         // ── Migrations ────────────────────────────────────────────────────────
@@ -734,11 +734,20 @@ export default function FinancesPage() {
           migrated = true;
         }
 
-        // Add endDate to CC/extra-debt items (paid off via 401k loan Sept 2026)
-        const ccEndDate = "2026-08-31";
+        // Add endDate to CC/extra-debt items (paid off via 401k loan). The loan
+        // can't be requested until ~Sept 30 and takes a week or two to fund, so
+        // the payoff realistically lands mid-October — keep minimums through Oct.
+        const ccEndDate = "2026-10-31";
         const ccIds = ["s7", "s8", "s9", "s10", "s15", "carecredit_min"];
         f.items = f.items.map(it => {
           if (ccIds.includes(it.id) && !it.endDate) { migrated = true; return { ...it, endDate: ccEndDate }; }
+          return it;
+        });
+
+        // Push any CC/extra-debt items still ending Aug 31 out to Oct 31 (the
+        // 401k-loan payoff slipped from September to mid-October).
+        f.items = f.items.map(it => {
+          if (ccIds.includes(it.id) && it.endDate === "2026-08-31") { migrated = true; return { ...it, endDate: ccEndDate }; }
           return it;
         });
 
@@ -1220,8 +1229,8 @@ export default function FinancesPage() {
         return Object.keys(fixes).length ? { ...it, ...fixes } : it;
       }
       // Cap all Credit Card items at Aug 31 2026 (paid off via 401k loan)
-      if (it.category === "Credit Card" && (!it.endDate || it.endDate > "2026-08-31")) {
-        return { ...it, endDate: "2026-08-31" };
+      if (it.category === "Credit Card" && (!it.endDate || it.endDate > "2026-10-31")) {
+        return { ...it, endDate: "2026-10-31" };
       }
       return it;
     });
