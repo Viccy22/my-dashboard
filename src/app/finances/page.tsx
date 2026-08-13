@@ -154,6 +154,10 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s8",  name:"Capital One Savor (min)",       amount:-110,     schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-10-31" },
   { id:"s9",  name:"Capital One Platinum (min)",    amount:-25,      schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-10-31" },
   { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,      schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true, endDate:"2026-10-31" },
+  // Venture & Ollo minimums (were tracked as balances but not in cash flow).
+  // Day-of-month is a placeholder (15th) until the real due dates are known.
+  { id:"s_venture_min", name:"Capital One Venture (min)", amount:-110, schedule:{ type:"monthly", dayOfMonth:15 }, category:"Credit Card", active:true, endDate:"2026-10-31" },
+  { id:"s_ollo_min",    name:"Ollo (min)",                amount:-220, schedule:{ type:"monthly", dayOfMonth:15 }, category:"Credit Card", active:true, endDate:"2026-10-31" },
   { id:"s13", name:"Disney Annual Pass",            amount:-67,      schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Subscriptions",active:true },
   { id:"s14", name:"Fitness membership",            amount:-40,      schedule:{ type:"monthly",  dayOfMonth:22 }, category:"Subscriptions",active:true },
   { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-10-31" },
@@ -638,6 +642,17 @@ export default function FinancesPage() {
         if (carItem && carItem.endDate === "2026-11-25") {
           f.items = f.items.map(it => it.id === "car_monthly" ? { ...it, endDate: "2027-04-25" } : it);
           migrated = true;
+        }
+
+        // Add Venture ($110) and Ollo ($220) minimums — tracked as balances but
+        // missing from cash flow. Placeholder day-of-month (15) until real due
+        // dates are known; end Oct 31 with the other cards (paid off via loan).
+        const newCcMins: RecurringItem[] = [
+          { id: "s_venture_min", name: "Capital One Venture (min)", amount: -110, schedule: { type: "monthly", dayOfMonth: 15 }, category: "Credit Card", active: true, endDate: "2026-10-31" },
+          { id: "s_ollo_min",    name: "Ollo (min)",                amount: -220, schedule: { type: "monthly", dayOfMonth: 15 }, category: "Credit Card", active: true, endDate: "2026-10-31" },
+        ];
+        for (const m of newCcMins) {
+          if (!f.items.some(it => it.id === m.id)) { f.items = [...f.items, m]; migrated = true; }
         }
 
         // Re-seed BNPL to the confirmed 8/12/26 set once (handoff §4). The old
