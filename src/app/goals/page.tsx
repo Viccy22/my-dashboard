@@ -46,7 +46,7 @@ function seedPlan(): GoalsPlan {
       { id: "g_baby",       name: "Baby (first year)",            target: 16000,    current: 0, priority: 7, targetDate: "2027-06-01", note: "Readiness mid-2027+; no childcare (WFH)" },
     ],
     overdue: [
-      { id: "o_ouc", name: "OUC electric past due", amount: 288, note: "Was due before 8/3 — confirm if still outstanding" },
+      { id: "o_ouc", name: "OUC electric past due", amount: 288, note: "Due now — paying 8/14" },
     ],
     mortgage: {
       amountBehind: 1860, monthlyShortfall: 560, nickContribution: 0, herContribution: 0, paid: 0,
