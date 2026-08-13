@@ -128,8 +128,12 @@ const SEED_DEBTS: DebtAccount[] = [
 ];
 
 const DEFAULT_ITEMS: RecurringItem[] = [
-  { id:"s0",  name:"Bi-weekly paycheck",            amount:+1540,    schedule:{ type:"biweekly", anchorDate:"2026-07-01" }, category:"Income",       active:true, endDate:"2026-08-26" },
-  { id:"s0b", name:"Bi-weekly paycheck",            amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",       active:true, startDate:"2026-09-01" },
+  // Net take-home per paystub (7/17/26). $1,531.77 before the new 401k loan
+  // deduction, $1,405.53 after — the drop lands on the Sep 9 check (loan
+  // repayment begins that period). Biweekly anchor 2026-07-01 reproduces the
+  // real payday calendar (Jul 15/29, Aug 12/26, Sep 9/23, …).
+  { id:"s0",  name:"Bi-weekly paycheck",            amount:+1531.77, schedule:{ type:"biweekly", anchorDate:"2026-07-01" }, category:"Income",       active:true, endDate:"2026-08-26" },
+  { id:"s0b", name:"Bi-weekly paycheck",            amount:+1405.53, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",       active:true, startDate:"2026-09-09" },
   { id:"s2",  name:"Car insurance",                 amount:-255,     schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true },
   // Car payment & OUC electric were converted from monthly lump sums to 4x/month
   // weekly installments in July 2026 (easier to absorb per-paycheck). July itself
@@ -413,7 +417,7 @@ const SEED_BNPL: BNPLPlan[] = [
 
 // Sept 2026 plan items — always injected at render time regardless of stored data
 const PLAN_ITEMS: RecurringItem[] = [
-  { id:"s0b",          name:"Bi-weekly paycheck",       amount:+1368.15, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",   active:true, startDate:"2026-09-01" },
+  { id:"s0b",          name:"Bi-weekly paycheck",       amount:+1405.53, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",   active:true, startDate:"2026-09-09" },
   { id:"s_sinking",    name:"Sinking funds → HYSA",    amount:-512,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2026-09-01", isTransfer:true },
   { id:"s_ef_starter", name:"→ Starter EF ($3k goal)", amount:-400,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2026-09-01", endDate:"2026-11-30", isTransfer:true },
   { id:"s_wh_fund",    name:"→ Water heater ($1.8k)",  amount:-600,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2026-12-01", endDate:"2027-02-28", isTransfer:true },
@@ -728,11 +732,20 @@ export default function FinancesPage() {
           migrated = true;
         }
 
-        // Add post-Sept paycheck ($1,368.15, 401k loan repayment baked in)
+        // Add post-Sept paycheck (401k loan repayment baked in)
         if (!f.items.some(it => it.id === "s0b")) {
-          f.items = [...f.items, { id: "s0b", name: "Bi-weekly paycheck", amount: 1368.15, schedule: { type: "biweekly" as const, anchorDate: "2026-09-09" }, category: "Income", active: true }];
+          f.items = [...f.items, { id: "s0b", name: "Bi-weekly paycheck", amount: 1405.53, schedule: { type: "biweekly" as const, anchorDate: "2026-09-09" }, category: "Income", active: true, startDate: "2026-09-09" }];
           migrated = true;
         }
+
+        // Correct paycheck net to confirmed paystub values (7/17/26): the old
+        // seeds used rounded $1,540 / $1,368.15; actual take-home is $1,531.77
+        // before the 401k loan deduction and $1,405.53 after (drop on Sep 9).
+        f.items = f.items.map(it => {
+          if (it.id === "s0" && it.amount === 1540) { migrated = true; return { ...it, amount: 1531.77 }; }
+          if (it.id === "s0b" && it.amount === 1368.15) { migrated = true; return { ...it, amount: 1405.53, startDate: "2026-09-09" }; }
+          return it;
+        });
 
         // Add endDate to CC/extra-debt items (paid off via 401k loan). The loan
         // can't be requested until ~Sept 30 and takes a week or two to fund, so
