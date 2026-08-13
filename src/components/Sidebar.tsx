@@ -207,6 +207,15 @@ function RunIcon() {
     </svg>
   );
 }
+function TargetIcon() {
+  return (
+    <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <circle cx="8" cy="8" r="6.5" />
+      <circle cx="8" cy="8" r="3.5" />
+      <circle cx="8" cy="8" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 function ClockIcon() {
   return (
     <svg className="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -255,6 +264,7 @@ const groups: NavGroup[] = [
     items: [
       { href: "/finances",     label: "Bills & Budget",     icon: <DollarIcon />,  built: true },
       { href: "/ot-planner",   label: "Overtime Planner",   icon: <ClockIcon />,   built: true },
+      { href: "/goals",        label: "Goals & Catch-Up",   icon: <TargetIcon />,  built: true },
       { href: "/money-plan",   label: "Money Movement Plan", icon: <PlanIcon />,    built: true },
       { href: "/subscriptions",label: "Subscriptions",      icon: <ReceiptIcon />, built: true },
       { href: "/bifl",         label: "Buy It For Life",    icon: <DiamondIcon />,  built: true },
