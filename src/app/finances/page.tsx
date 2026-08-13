@@ -129,11 +129,12 @@ const SEED_DEBTS: DebtAccount[] = [
 
 const DEFAULT_ITEMS: RecurringItem[] = [
   // Net take-home per paystub (7/17/26). $1,531.77 before the new 401k loan
-  // deduction, $1,405.53 after — the drop lands on the Sep 9 check (loan
-  // repayment begins that period). Biweekly anchor 2026-07-01 reproduces the
-  // real payday calendar (Jul 15/29, Aug 12/26, Sep 9/23, …).
-  { id:"s0",  name:"Bi-weekly paycheck",            amount:+1531.77, schedule:{ type:"biweekly", anchorDate:"2026-07-01" }, category:"Income",       active:true, endDate:"2026-08-26" },
-  { id:"s0b", name:"Bi-weekly paycheck",            amount:+1405.53, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",       active:true, startDate:"2026-09-09" },
+  // deduction, $1,405.53 after — the drop lands on the first post-loan check
+  // (repayment begins that pay period). Paydays land on FRIDAYS: the new bank
+  // (BoA) doesn't release 2 days early like the old one did, so the biweekly
+  // anchor is Fri 2026-07-03 → Jul 17/31, Aug 14/28, Sep 11/25, Oct 9/23, …
+  { id:"s0",  name:"Bi-weekly paycheck",            amount:+1531.77, schedule:{ type:"biweekly", anchorDate:"2026-07-03" }, category:"Income",       active:true, endDate:"2026-08-28" },
+  { id:"s0b", name:"Bi-weekly paycheck",            amount:+1405.53, schedule:{ type:"biweekly", anchorDate:"2026-09-11" }, category:"Income",       active:true, startDate:"2026-09-11" },
   { id:"s2",  name:"Car insurance",                 amount:-255,     schedule:{ type:"monthly",  dayOfMonth:25 }, category:"Transport",   active:true },
   // Car payment & OUC electric were converted from monthly lump sums to 4x/month
   // weekly installments in July 2026 (easier to absorb per-paycheck). July itself
@@ -417,7 +418,7 @@ const SEED_BNPL: BNPLPlan[] = [
 
 // Sept 2026 plan items — always injected at render time regardless of stored data
 const PLAN_ITEMS: RecurringItem[] = [
-  { id:"s0b",          name:"Bi-weekly paycheck",       amount:+1405.53, schedule:{ type:"biweekly", anchorDate:"2026-09-09" }, category:"Income",   active:true, startDate:"2026-09-09" },
+  { id:"s0b",          name:"Bi-weekly paycheck",       amount:+1405.53, schedule:{ type:"biweekly", anchorDate:"2026-09-11" }, category:"Income",   active:true, startDate:"2026-09-11" },
   { id:"s_sinking",    name:"Sinking funds → HYSA",    amount:-512,     schedule:{ type:"monthly",  dayOfMonth:1 }, category:"Transfer", active:true, startDate:"2026-09-01", isTransfer:true },
   { id:"s_ef_starter", name:"→ Starter EF ($3k goal)", amount:-400,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2026-09-01", endDate:"2026-11-30", isTransfer:true },
   { id:"s_wh_fund",    name:"→ Water heater ($1.8k)",  amount:-600,     schedule:{ type:"monthly",  dayOfMonth:5 }, category:"Transfer", active:true, startDate:"2026-12-01", endDate:"2027-02-28", isTransfer:true },
@@ -740,10 +741,25 @@ export default function FinancesPage() {
 
         // Correct paycheck net to confirmed paystub values (7/17/26): the old
         // seeds used rounded $1,540 / $1,368.15; actual take-home is $1,531.77
-        // before the 401k loan deduction and $1,405.53 after (drop on Sep 9).
+        // before the 401k loan deduction and $1,405.53 after.
         f.items = f.items.map(it => {
           if (it.id === "s0" && it.amount === 1540) { migrated = true; return { ...it, amount: 1531.77 }; }
-          if (it.id === "s0b" && it.amount === 1368.15) { migrated = true; return { ...it, amount: 1405.53, startDate: "2026-09-09" }; }
+          if (it.id === "s0b" && it.amount === 1368.15) { migrated = true; return { ...it, amount: 1405.53 }; }
+          return it;
+        });
+
+        // Shift paydays +2 days: the old bank released deposits 2 days early
+        // (Wednesdays); the new bank pays on the actual Friday. Move the biweekly
+        // anchors Wed→Fri and the pre/post-loan boundary accordingly.
+        f.items = f.items.map(it => {
+          if (it.id === "s0" && it.schedule.type === "biweekly" && (it.schedule.anchorDate === "2026-07-01" || it.schedule.anchorDate === "2026-06-25")) {
+            migrated = true;
+            return { ...it, schedule: { type: "biweekly" as const, anchorDate: "2026-07-03" }, endDate: "2026-08-28" };
+          }
+          if (it.id === "s0b" && it.schedule.type === "biweekly" && it.schedule.anchorDate === "2026-09-09") {
+            migrated = true;
+            return { ...it, schedule: { type: "biweekly" as const, anchorDate: "2026-09-11" }, startDate: "2026-09-11" };
+          }
           return it;
         });
 
@@ -1221,24 +1237,25 @@ export default function FinancesPage() {
   // ── Effective items — always include plan items + fix CC end dates ────────
   const effectiveItems = useMemo(() => {
     let items = finances.items.map(it => {
-      // Always cap s0 (pre-Sept paycheck) at Aug 26 so it never overlaps s0b
+      // Always cap s0 (pre-loan paycheck) at its last Friday payday (Aug 28) so
+      // it never overlaps s0b. Paydays are Fridays (anchor 2026-07-03).
       if (it.id === "s0") {
         const sched = it.schedule as { anchorDate?: string };
         const fixes: Partial<RecurringItem> = {};
-        if (it.schedule.type === "biweekly" && sched.anchorDate === "2026-06-25") {
-          fixes.amount = it.amount === 1400 ? 1540 : it.amount;
-          fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-07-01" };
+        if (it.schedule.type === "biweekly" && (sched.anchorDate === "2026-06-25" || sched.anchorDate === "2026-07-01")) {
+          fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-07-03" };
         }
-        if (!it.endDate || it.endDate > "2026-08-26") fixes.endDate = "2026-08-26";
+        if (!it.endDate || it.endDate > "2026-08-28") fixes.endDate = "2026-08-28";
         return Object.keys(fixes).length ? { ...it, ...fixes } : it;
       }
-      // Always ensure s0b doesn't fire before Sept (biweekly fires in both directions)
+      // Always ensure s0b (post-loan paycheck) fires on the Friday cadence and
+      // doesn't start before its first shifted payday (Sep 11).
       if (it.id === "s0b") {
         const fixes: Partial<RecurringItem> = {};
-        if (!it.startDate || it.startDate > "2026-09-01") fixes.startDate = "2026-09-01";
+        if (!it.startDate || it.startDate > "2026-09-11") fixes.startDate = "2026-09-11";
         const sched = it.schedule as { anchorDate?: string };
-        if (it.schedule.type !== "biweekly" || sched.anchorDate !== "2026-09-09")
-          fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-09-09" };
+        if (it.schedule.type !== "biweekly" || sched.anchorDate !== "2026-09-11")
+          fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-09-11" };
         return Object.keys(fixes).length ? { ...it, ...fixes } : it;
       }
       // Cap all Credit Card items at Aug 31 2026 (paid off via 401k loan)
