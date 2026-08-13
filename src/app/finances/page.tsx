@@ -611,11 +611,11 @@ export default function FinancesPage() {
         // (Wednesdays); the new bank pays on the actual Friday. Move the biweekly
         // anchors Wed→Fri and the pre/post-loan boundary accordingly.
         f.items = f.items.map(it => {
-          if (it.id === "s0" && it.schedule.type === "biweekly" && (it.schedule.anchorDate === "2026-07-01" || it.schedule.anchorDate === "2026-06-25")) {
+          if (it.id === "s0" && (it.schedule.type !== "biweekly" || it.schedule.anchorDate !== "2026-07-03" || it.endDate !== "2026-08-28")) {
             migrated = true;
             return { ...it, schedule: { type: "biweekly" as const, anchorDate: "2026-07-03" }, endDate: "2026-08-28" };
           }
-          if (it.id === "s0b" && it.schedule.type === "biweekly" && it.schedule.anchorDate === "2026-09-09") {
+          if (it.id === "s0b" && (it.schedule.type !== "biweekly" || it.schedule.anchorDate !== "2026-09-11" || it.startDate !== "2026-09-11")) {
             migrated = true;
             return { ...it, schedule: { type: "biweekly" as const, anchorDate: "2026-09-11" }, startDate: "2026-09-11" };
           }
@@ -1135,15 +1135,16 @@ export default function FinancesPage() {
   // ── Effective items — always include plan items + fix CC end dates ────────
   const effectiveItems = useMemo(() => {
     let items = finances.items.map(it => {
-      // Always cap s0 (pre-loan paycheck) at its last Friday payday (Aug 28) so
-      // it never overlaps s0b. Paydays are Fridays (anchor 2026-07-03).
+      // Always force s0 (pre-loan paycheck) onto the Friday biweekly grid
+      // (anchor 2026-07-03 → Jul 17/31, Aug 14/28) and end it on Aug 28, its
+      // last pre-loan payday, so it never overlaps s0b regardless of what the
+      // stored anchor/endDate happen to be.
       if (it.id === "s0") {
         const sched = it.schedule as { anchorDate?: string };
         const fixes: Partial<RecurringItem> = {};
-        if (it.schedule.type === "biweekly" && (sched.anchorDate === "2026-06-25" || sched.anchorDate === "2026-07-01")) {
+        if (it.schedule.type !== "biweekly" || sched.anchorDate !== "2026-07-03")
           fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-07-03" };
-        }
-        if (!it.endDate || it.endDate > "2026-08-28") fixes.endDate = "2026-08-28";
+        if (it.endDate !== "2026-08-28") fixes.endDate = "2026-08-28";
         return Object.keys(fixes).length ? { ...it, ...fixes } : it;
       }
       // Always ensure s0b (post-loan paycheck) fires on the Friday cadence and
