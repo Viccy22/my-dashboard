@@ -1170,13 +1170,11 @@ export default function FinancesPage() {
       if (it.category === "Credit Card" && (!it.endDate || it.endDate > "2026-09-30")) {
         return { ...it, endDate: "2026-09-30" };
       }
-      // Safety net: any other biweekly Income item still anchored on a Wednesday
-      // (old bank's 2-days-early deposit) gets shifted to the actual Friday.
-      if (it.category === "Income" && it.schedule.type === "biweekly") {
-        const anchor = new Date(it.schedule.anchorDate + "T00:00:00");
-        if (anchor.getDay() === 3) {
-          return { ...it, schedule: { type: "biweekly" as const, anchorDate: addDays(it.schedule.anchorDate, 2) } };
-        }
+      // Safety net: snap ANY other biweekly paycheck (positive/biweekly income,
+      // whatever its stored anchor) onto the canonical Friday grid so deposits
+      // always land Aug 14 / 28, Sep 11 / 25, … (2026-07-03 + 14-day grid).
+      if (it.schedule.type === "biweekly" && it.amount > 0 && it.schedule.anchorDate !== "2026-07-03") {
+        return { ...it, schedule: { type: "biweekly" as const, anchorDate: "2026-07-03" } };
       }
       return it;
     });
