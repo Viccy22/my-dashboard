@@ -580,6 +580,19 @@ export default function FinancesPage() {
           migrated = true;
         }
 
+        // Ensure the pre-loan paycheck (s0) exists — if it was deleted from
+        // stored data, the Aug 14/28 deposits go missing entirely. Add it back
+        // on the Friday grid, ending Aug 28 (its last pre-loan payday).
+        if (!f.items.some(it => it.id === "s0")) {
+          f.items = [...f.items, { id: "s0", name: "Bi-weekly paycheck", amount: 1531.77, schedule: { type: "biweekly" as const, anchorDate: "2026-07-03" }, category: "Income", active: true, endDate: "2026-08-28" }];
+          migrated = true;
+        }
+        // And make sure it isn't paused (a paused paycheck shows no deposits).
+        f.items = f.items.map(it => {
+          if (it.id === "s0" && !it.active) { migrated = true; return { ...it, active: true }; }
+          return it;
+        });
+
         // Add post-Sept paycheck (401k loan repayment baked in)
         if (!f.items.some(it => it.id === "s0b")) {
           f.items = [...f.items, { id: "s0b", name: "Bi-weekly paycheck", amount: 1405.53, schedule: { type: "biweekly" as const, anchorDate: "2026-09-09" }, category: "Income", active: true, startDate: "2026-09-09" }];
