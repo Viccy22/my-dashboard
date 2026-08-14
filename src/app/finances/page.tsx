@@ -136,7 +136,8 @@ const EXTRA_ITEMS: RecurringItem[] = [
   { id:"x_hoa",       name:"HOA (my half)",          amount:-307.40, schedule:{ type:"monthly", dayOfMonth:1  }, category:"Household",     active:false }, // paused until the cards are paid off
   { id:"x_phone",     name:"Phone (AT&T, full)",     amount:-300,    schedule:{ type:"monthly", dayOfMonth:20 }, category:"Household",     active:true },
   // Subscriptions (confirmed active)
-  { id:"x_apple",     name:"Apple",                  amount:-42.38,  schedule:{ type:"monthly", dayOfMonth:3  }, category:"Subscriptions", active:true },
+  { id:"x_prime",     name:"Prime Video Ultra",      amount:-5.94,   schedule:{ type:"monthly", dayOfMonth:19 }, category:"Subscriptions", active:true },
+  { id:"x_appletv",   name:"Apple TV+",              amount:-14.67,  schedule:{ type:"monthly", dayOfMonth:26 }, category:"Subscriptions", active:true },
   { id:"x_xbox",      name:"Microsoft / Xbox",       amount:-29.09,  schedule:{ type:"monthly", dayOfMonth:7  }, category:"Subscriptions", active:true },
   { id:"x_furbo",     name:"Furbo pet camera",       amount:-17.18,  schedule:{ type:"monthly", dayOfMonth:8  }, category:"Pets",          active:true },
   { id:"x_oura",      name:"Oura Ring",              amount:-5.99,   schedule:{ type:"monthly", dayOfMonth:9  }, category:"Subscriptions", active:true },
@@ -699,7 +700,7 @@ export default function FinancesPage() {
 
         // 8/13 review round 2: drop the items that aren't actually recurring
         // (unplanned / manual-entry spend), and pause HOA + Canva until ready.
-        const notRecurringIds = ["x_amazon", "x_venmo", "x_restaurants", "x_doordash", "x_ubereats", "x_homedepot", "x_primevideo", "x_spotify", "x_instacartp", "x_uberone", "x_walmartp", "x_fun"];
+        const notRecurringIds = ["x_amazon", "x_venmo", "x_restaurants", "x_doordash", "x_ubereats", "x_homedepot", "x_primevideo", "x_apple", "x_spotify", "x_instacartp", "x_uberone", "x_walmartp", "x_fun"];
         if (f.items.some(it => notRecurringIds.includes(it.id))) {
           f.items = f.items.filter(it => !notRecurringIds.includes(it.id));
           migrated = true;
