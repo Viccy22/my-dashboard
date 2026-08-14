@@ -127,37 +127,23 @@ const SEED_DEBTS: DebtAccount[] = [
   { id: "dbt7", name: "Nelnet Student Loans",   type: "student_loan", balance: 38669.34, minPayment: 0,  apr: 5.5, deferred: true, deferredUntil: "2028-11-01", notes: "Payments deferred until Nov 2028" },
 ];
 
-// Bills + recurring spending confirmed from the Mar–Jul statement review.
-// Variable-spend items are monthly averages; days-of-month are spread estimates
-// (except where a real due date is known) and can be moved. HOA/Phone are real
-// bills; the rest are average category spend so cash flow reflects reality.
+// Recurring bills + subscriptions confirmed active in Victoria's 8/13 review.
+// Variable/unplanned spend (Amazon, restaurants, DoorDash, Uber Eats, Venmo,
+// Home Depot, movie rentals, fun money) is intentionally NOT here — she adds
+// those manually as they happen. HOA and Canva are seeded paused.
 const EXTRA_ITEMS: RecurringItem[] = [
   // Real bills
-  { id:"x_hoa",       name:"HOA (my half)",          amount:-307.40, schedule:{ type:"monthly", dayOfMonth:1  }, category:"Household",     active:true },
+  { id:"x_hoa",       name:"HOA (my half)",          amount:-307.40, schedule:{ type:"monthly", dayOfMonth:1  }, category:"Household",     active:false }, // paused until the cards are paid off
   { id:"x_phone",     name:"Phone (AT&T, full)",     amount:-300,    schedule:{ type:"monthly", dayOfMonth:20 }, category:"Household",     active:true },
-  // Variable spending (monthly averages)
-  { id:"x_amazon",    name:"Amazon (general)",       amount:-217.05, schedule:{ type:"monthly", dayOfMonth:10 }, category:"Shopping",      active:true },
-  { id:"x_venmo",     name:"Venmo payments out",     amount:-192.21, schedule:{ type:"monthly", dayOfMonth:20 }, category:"Other",         active:true },
-  { id:"x_restaurants",name:"Restaurants / fast food",amount:-207,   schedule:{ type:"monthly", dayOfMonth:15 }, category:"Dining",        active:true },
-  { id:"x_doordash",  name:"DoorDash",               amount:-54.68,  schedule:{ type:"monthly", dayOfMonth:12 }, category:"Dining",        active:true },
-  { id:"x_ubereats",  name:"Uber Eats",              amount:-66.78,  schedule:{ type:"monthly", dayOfMonth:18 }, category:"Dining",        active:true },
-  { id:"x_homedepot", name:"Home Depot",             amount:-38.62,  schedule:{ type:"monthly", dayOfMonth:16 }, category:"Household",     active:true },
-  // Subscriptions
+  // Subscriptions (confirmed active)
   { id:"x_apple",     name:"Apple",                  amount:-42.38,  schedule:{ type:"monthly", dayOfMonth:3  }, category:"Subscriptions", active:true },
-  { id:"x_primevideo",name:"Prime Video Channels",   amount:-41.52,  schedule:{ type:"monthly", dayOfMonth:5  }, category:"Subscriptions", active:true },
   { id:"x_xbox",      name:"Microsoft / Xbox",       amount:-29.09,  schedule:{ type:"monthly", dayOfMonth:7  }, category:"Subscriptions", active:true },
   { id:"x_furbo",     name:"Furbo pet camera",       amount:-17.18,  schedule:{ type:"monthly", dayOfMonth:8  }, category:"Pets",          active:true },
   { id:"x_oura",      name:"Oura Ring",              amount:-5.99,   schedule:{ type:"monthly", dayOfMonth:9  }, category:"Subscriptions", active:true },
-  { id:"x_spotify",   name:"Spotify",                amount:-4.74,   schedule:{ type:"monthly", dayOfMonth:11 }, category:"Subscriptions", active:true },
-  { id:"x_instacartp",name:"Instacart+ membership",  amount:-9.99,   schedule:{ type:"monthly", dayOfMonth:13 }, category:"Subscriptions", active:true },
-  { id:"x_uberone",   name:"Uber One",               amount:-11.39,  schedule:{ type:"monthly", dayOfMonth:14 }, category:"Subscriptions", active:true },
-  { id:"x_walmartp",  name:"Walmart+",               amount:-12.95,  schedule:{ type:"monthly", dayOfMonth:15 }, category:"Subscriptions", active:true },
-  { id:"x_canva",     name:"Canva",                  amount:-12.00,  schedule:{ type:"monthly", dayOfMonth:17 }, category:"Subscriptions", active:true },
+  { id:"x_canva",     name:"Canva",                  amount:-12.00,  schedule:{ type:"monthly", dayOfMonth:17 }, category:"Subscriptions", active:false }, // paused
   { id:"x_cinemark",  name:"Cinemark",               amount:-13.41,  schedule:{ type:"monthly", dayOfMonth:19 }, category:"Subscriptions", active:true },
   { id:"x_kindle",    name:"Kindle",                 amount:-16.00,  schedule:{ type:"monthly", dayOfMonth:21 }, category:"Subscriptions", active:true },
   { id:"x_seaworld",  name:"SeaWorld pass",          amount:-32.00,  schedule:{ type:"monthly", dayOfMonth:23 }, category:"Subscriptions", active:true },
-  // Fun money — starter discretionary budget for gambling / theme parks / extras
-  { id:"x_fun",       name:"Fun money (parks, games, extras)", amount:-150, schedule:{ type:"monthly", dayOfMonth:1 }, category:"Fun", active:true },
 ];
 
 const DEFAULT_ITEMS: RecurringItem[] = [
@@ -183,17 +169,17 @@ const DEFAULT_ITEMS: RecurringItem[] = [
   { id:"s4",  name:"Zorro's diet food",             amount:-120,     schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Pets",        active:false },
   { id:"s5",  name:"Groceries",                     amount:-50,      schedule:{ type:"weekly",   dayOfWeek:6   }, category:"Groceries",   active:true },
   { id:"s6",  name:"Gas",                           amount:-40,      schedule:{ type:"monthly",  dayOfMonth:15 }, category:"Transport",   active:true },
-  { id:"s7",  name:"Ally CC (min)",                 amount:-224,     schedule:{ type:"monthly",  dayOfMonth:5  }, category:"Credit Card", active:true, endDate:"2026-10-31" },
-  { id:"s8",  name:"Capital One Savor (min)",       amount:-110,     schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-10-31" },
-  { id:"s9",  name:"Capital One Platinum (min)",    amount:-25,      schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-10-31" },
-  { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,      schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true, endDate:"2026-10-31" },
+  { id:"s7",  name:"Ally CC (min)",                 amount:-224,     schedule:{ type:"monthly",  dayOfMonth:5  }, category:"Credit Card", active:true, endDate:"2026-09-30" },
+  { id:"s8",  name:"Capital One Savor (min)",       amount:-110,     schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-09-30" },
+  { id:"s9",  name:"Capital One Platinum (min)",    amount:-25,      schedule:{ type:"monthly",  dayOfMonth:6  }, category:"Credit Card", active:true, endDate:"2026-09-30" },
+  { id:"s10", name:"Capital One Quicksilver (min)", amount:-32,      schedule:{ type:"monthly",  dayOfMonth:11 }, category:"Credit Card", active:true, endDate:"2026-09-30" },
   // Venture & Ollo minimums (were tracked as balances but not in cash flow).
   // Confirmed due days: Ollo the 6th, Venture the 9th.
-  { id:"s_venture_min", name:"Capital One Venture (min)", amount:-110, schedule:{ type:"monthly", dayOfMonth:9 }, category:"Credit Card", active:true, endDate:"2026-10-31" },
-  { id:"s_ollo_min",    name:"Ollo (min)",                amount:-220, schedule:{ type:"monthly", dayOfMonth:6 }, category:"Credit Card", active:true, endDate:"2026-10-31" },
+  { id:"s_venture_min", name:"Capital One Venture (min)", amount:-110, schedule:{ type:"monthly", dayOfMonth:9 }, category:"Credit Card", active:true, endDate:"2026-09-30" },
+  { id:"s_ollo_min",    name:"Ollo (min)",                amount:-220, schedule:{ type:"monthly", dayOfMonth:6 }, category:"Credit Card", active:true, endDate:"2026-09-30" },
   { id:"s13", name:"Disney Annual Pass",            amount:-67,      schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Subscriptions",active:true },
   { id:"s14", name:"Planet Fitness",                amount:-10.65,   schedule:{ type:"monthly",  dayOfMonth:22 }, category:"Subscriptions",active:true },
-  { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-10-31" },
+  { id:"s15", name:"Extra debt payment",            amount:-100,     schedule:{ type:"monthly",  dayOfMonth:28 }, category:"Debt",        active:true, endDate:"2026-09-30" },
   ...EXTRA_ITEMS,
   { id:"s_sinking", name:"Sinking funds → HYSA",  amount:-512, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2026-09-01", isTransfer:true },
   { id:"s_nelnet",  name:"Student loan → Nelnet", amount:-281, schedule:{ type:"monthly",  dayOfMonth:1  }, category:"Transfer",    active:true, startDate:"2027-01-01", isTransfer:true },
@@ -249,7 +235,7 @@ function buildBnpl(o: {
 }
 
 // Bump when the confirmed BNPL set changes, to re-seed stored data once.
-const BNPL_REV = "2026-08-12";
+const BNPL_REV = "2026-08-13";
 
 // Confirmed 8/12/26. Four apps total $1,730.09; EDC festival plan is separate.
 const SEED_BNPL: BNPLPlan[] = [
@@ -271,7 +257,8 @@ const SEED_BNPL: BNPLPlan[] = [
   buildBnpl({ id: "kl_amazon",      merchant: "Amazon", provider: "Klarna", payment: 7.75, remaining: 23.25, firstDue: "2026-08-20", cadence: "biweekly", paymentsPaid: 1 }),
   // EDC Orlando / Front Gate — monthly festival installment, ends Oct 2026.
   // Exact day-of-month unknown; placed on the 15th and marked estimated.
-  buildBnpl({ id: "edc_frontgate",  merchant: "EDC Orlando", provider: "Front Gate Tickets", payment: 43.88, remaining: 131.64, firstDue: "2026-08-15", cadence: "monthly", paymentsPaid: 5, estimated: true }),
+  // EDC Orlando / Front Gate — 2 payments left (confirmed): Aug 15 & Sep 11.
+  { id: "edc_frontgate", merchant: "EDC Orlando", provider: "Front Gate Tickets", originalAmount: 97.77, paidToDate: 0, remainingBalance: 97.77, regularInstallment: 43.88, paymentsRemaining: 2, totalInstallments: 2, nextDueDate: "2026-08-15", finalPaymentDate: "2026-09-11", frequency: "monthly", autopayEnabled: false, status: "active", installments: [ { date: "2026-08-15", amount: 43.88 }, { date: "2026-09-11", amount: 53.89 } ] },
 ];
 
 // Sept 2026 plan items — always injected at render time regardless of stored data
@@ -575,7 +562,7 @@ export default function FinancesPage() {
         if (!f.overrides) f.overrides = [];
         // Auto-add Care Credit bill if missing
         if (!f.items.some(it => it.name.toLowerCase().includes("care credit"))) {
-          f.items = [...f.items, { id: "carecredit_min", name: "Care Credit (min)", amount: -97, schedule: { type: "monthly", dayOfMonth: 19 }, category: "Credit Card", active: true, endDate: "2026-10-31" }];
+          f.items = [...f.items, { id: "carecredit_min", name: "Care Credit (min)", amount: -97, schedule: { type: "monthly", dayOfMonth: 19 }, category: "Credit Card", active: true, endDate: "2026-09-30" }];
         }
 
         // ── Migrations ────────────────────────────────────────────────────────
@@ -625,7 +612,7 @@ export default function FinancesPage() {
         // Add endDate to CC/extra-debt items (paid off via 401k loan). The loan
         // can't be requested until ~Sept 30 and takes a week or two to fund, so
         // the payoff realistically lands mid-October — keep minimums through Oct.
-        const ccEndDate = "2026-10-31";
+        const ccEndDate = "2026-09-30";
         const ccIds = ["s7", "s8", "s9", "s10", "s15", "carecredit_min"];
         f.items = f.items.map(it => {
           if (ccIds.includes(it.id) && !it.endDate) { migrated = true; return { ...it, endDate: ccEndDate }; }
@@ -683,8 +670,8 @@ export default function FinancesPage() {
         // missing from cash flow. Placeholder day-of-month (15) until real due
         // dates are known; end Oct 31 with the other cards (paid off via loan).
         const newCcMins: RecurringItem[] = [
-          { id: "s_venture_min", name: "Capital One Venture (min)", amount: -110, schedule: { type: "monthly", dayOfMonth: 9 }, category: "Credit Card", active: true, endDate: "2026-10-31" },
-          { id: "s_ollo_min",    name: "Ollo (min)",                amount: -220, schedule: { type: "monthly", dayOfMonth: 6 }, category: "Credit Card", active: true, endDate: "2026-10-31" },
+          { id: "s_venture_min", name: "Capital One Venture (min)", amount: -110, schedule: { type: "monthly", dayOfMonth: 9 }, category: "Credit Card", active: true, endDate: "2026-09-30" },
+          { id: "s_ollo_min",    name: "Ollo (min)",                amount: -220, schedule: { type: "monthly", dayOfMonth: 6 }, category: "Credit Card", active: true, endDate: "2026-09-30" },
         ];
         for (const m of newCcMins) {
           if (!f.items.some(it => it.id === m.id)) { f.items = [...f.items, m]; migrated = true; }
@@ -704,11 +691,31 @@ export default function FinancesPage() {
           return it;
         });
 
-        // Add the confirmed bills + recurring spending (statement review). Skips
-        // any already present so re-running is safe.
+        // Add the confirmed bills + subscriptions (statement review). Skips any
+        // already present so re-running is safe.
         for (const m of EXTRA_ITEMS) {
           if (!f.items.some(it => it.id === m.id)) { f.items = [...f.items, m]; migrated = true; }
         }
+
+        // 8/13 review round 2: drop the items that aren't actually recurring
+        // (unplanned / manual-entry spend), and pause HOA + Canva until ready.
+        const notRecurringIds = ["x_amazon", "x_venmo", "x_restaurants", "x_doordash", "x_ubereats", "x_homedepot", "x_primevideo", "x_spotify", "x_instacartp", "x_uberone", "x_walmartp", "x_fun"];
+        if (f.items.some(it => notRecurringIds.includes(it.id))) {
+          f.items = f.items.filter(it => !notRecurringIds.includes(it.id));
+          migrated = true;
+        }
+        f.items = f.items.map(it => {
+          if ((it.id === "x_hoa" || it.id === "x_canva") && it.active) { migrated = true; return { ...it, active: false }; }
+          return it;
+        });
+
+        // Cards are paid off by the 401(k) loan before October's payments come
+        // due, so no card/extra-debt payments after September. Pull any CC or
+        // extra-debt item still ending Oct 31 back to Sep 30.
+        f.items = f.items.map(it => {
+          if ((it.category === "Credit Card" || it.id === "s15") && it.endDate === "2026-10-31") { migrated = true; return { ...it, endDate: "2026-09-30" }; }
+          return it;
+        });
 
         // Re-seed BNPL to the confirmed 8/12/26 set once (handoff §4). The old
         // seed had stale/closed plans (Steam pay-in-4, Divorce Horse, etc.);
@@ -1157,9 +1164,18 @@ export default function FinancesPage() {
           fixes.schedule = { type: "biweekly" as const, anchorDate: "2026-09-11" };
         return Object.keys(fixes).length ? { ...it, ...fixes } : it;
       }
-      // Cap all Credit Card items at Aug 31 2026 (paid off via 401k loan)
-      if (it.category === "Credit Card" && (!it.endDate || it.endDate > "2026-10-31")) {
-        return { ...it, endDate: "2026-10-31" };
+      // Cap all Credit Card items at Sep 30 2026 (paid off via 401k loan before
+      // October's payments come due).
+      if (it.category === "Credit Card" && (!it.endDate || it.endDate > "2026-09-30")) {
+        return { ...it, endDate: "2026-09-30" };
+      }
+      // Safety net: any other biweekly Income item still anchored on a Wednesday
+      // (old bank's 2-days-early deposit) gets shifted to the actual Friday.
+      if (it.category === "Income" && it.schedule.type === "biweekly") {
+        const anchor = new Date(it.schedule.anchorDate + "T00:00:00");
+        if (anchor.getDay() === 3) {
+          return { ...it, schedule: { type: "biweekly" as const, anchorDate: addDays(it.schedule.anchorDate, 2) } };
+        }
       }
       return it;
     });
