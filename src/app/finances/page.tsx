@@ -776,6 +776,29 @@ export default function FinancesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Re-read OT hours whenever the tab/window regains focus, so overtime set in
+  // the Overtime Planner shows up in the cash flow without a hard refresh.
+  useEffect(() => {
+    const refreshOt = () => {
+      if (document.hidden) return;
+      fetch("/api/data")
+        .then(r => (r.ok ? r.json() : null))
+        .then(res => {
+          if (!res) return;
+          const ot = (res.data?.ot as { hoursByPayDate?: Record<string, number> } | undefined)?.hoursByPayDate ?? {};
+          setOtHoursByDate(ot);
+          if (rawDataRef.current) (rawDataRef.current as DashboardData).ot = res.data?.ot;
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("focus", refreshOt);
+    document.addEventListener("visibilitychange", refreshOt);
+    return () => {
+      window.removeEventListener("focus", refreshOt);
+      document.removeEventListener("visibilitychange", refreshOt);
+    };
+  }, []);
+
   // ── Save ──────────────────────────────────────────────────────────────────
   const save = useCallback(async (fin: FinancesData) => {
     setStatus("saving");
