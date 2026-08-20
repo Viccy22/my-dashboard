@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { otNetForHours } from "@/lib/finances";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -347,6 +348,7 @@ function generateCashFlow(
   overrides: Override[],
   dateOverrides?: DateOverride[],
   bnplPlans?: BNPLPlan[],
+  otByDate?: Record<string, number>,
 ): CashFlowRow[] {
   const rows: CashFlowRow[] = [];
   const today = todayStr();
@@ -397,6 +399,12 @@ function generateCashFlow(
           }
         }
       }
+    }
+
+    // Overtime from the OT Planner — extra net income on that paycheck's date.
+    const otAmt = otByDate?.[dateStr];
+    if (otAmt && otAmt > 0) {
+      filteredHits.push({ description: "Overtime", amount: otAmt, source: { type: "empty" }, isTransfer: false });
     }
 
     if (filteredHits.length === 0) {
@@ -534,6 +542,9 @@ export default function FinancesPage() {
 
   const [daysToShow,   setDaysToShow]   = useState(60);
   const [forecastDate, setForecastDate] = useState("");
+
+  // OT hours per pay date, set in the Overtime Planner (read-only here).
+  const [otHoursByDate, setOtHoursByDate] = useState<Record<string, number>>({});
 
   // Which section tab is showing (Balance/Add Transaction stay always visible above these)
   const [tab, setTab] = useState<"cashflow" | "savings" | "debt" | "bills">("cashflow");
@@ -745,6 +756,8 @@ export default function FinancesPage() {
         setDebtAccounts(f.debt?.accounts ?? SEED_DEBTS);
         // BNPL plans
         setBNPLPlans(f.bnpl?.plans ?? SEED_BNPL);
+        // Overtime hours set in the OT Planner (top-level `ot` key)
+        setOtHoursByDate((d.ot as { hoursByPayDate?: Record<string, number> } | undefined)?.hoursByPayDate ?? {});
 
         // Auto-save after migrations so they persist
         if (migrated) {
@@ -1198,11 +1211,20 @@ export default function FinancesPage() {
     return items;
   }, [finances.items]);
 
+  // Net overtime $ per pay date, derived from OT Planner hours.
+  const otByDate = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const [date, hrs] of Object.entries(otHoursByDate)) {
+      if (hrs > 0) m[date] = otNetForHours(hrs);
+    }
+    return m;
+  }, [otHoursByDate]);
+
   // ── Cash flow ─────────────────────────────────────────────────────────────
   const allRows = useMemo(() => {
     if (finances.currentBalance == null) return [];
-    return generateCashFlow(finances.currentBalance, todayStr(), 365, effectiveItems, finances.transactions, finances.overrides, finances.dateOverrides, bnplPlans);
-  }, [finances, effectiveItems, bnplPlans]);
+    return generateCashFlow(finances.currentBalance, todayStr(), 365, effectiveItems, finances.transactions, finances.overrides, finances.dateOverrides, bnplPlans, otByDate);
+  }, [finances, effectiveItems, bnplPlans, otByDate]);
 
   const displayRows = useMemo(() => {
     const today = todayStr();
