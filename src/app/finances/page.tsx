@@ -363,12 +363,19 @@ function generateCashFlow(
 
     const hits: Array<{ description: string; amount: number; source: RowSource; isTransfer: boolean }> = [];
 
-    // Recurring items — income first, then expenses
+    // Recurring items — income first, then expenses. Overtime from the OT
+    // Planner is folded straight into the paycheck line (positive biweekly
+    // income) so there's a single paycheck row per payday, fed by the planner.
+    const ot = otByDate?.[dateStr] ?? 0;
     const dayItems = items.filter(it => itemAppliesToDate(it, dateStr));
     dayItems.sort((a, b) => b.amount - a.amount);
     for (const it of dayItems) {
       const ov = overrides.find(o => o.itemId === it.id && o.date === dateStr);
-      hits.push({ description: it.name, amount: ov ? ov.amount : it.amount, source: { type: "recurring", itemId: it.id }, isTransfer: !!it.isTransfer });
+      let amount = ov ? ov.amount : it.amount;
+      const isPaycheck = it.schedule.type === "biweekly" && it.amount > 0;
+      const withOT = isPaycheck && ot > 0;
+      if (withOT) amount += ot;
+      hits.push({ description: withOT ? `${it.name} (+OT)` : it.name, amount, source: { type: "recurring", itemId: it.id }, isTransfer: !!it.isTransfer });
     }
 
     // Check for date-overridden items (moved to this date from another date)
@@ -401,11 +408,6 @@ function generateCashFlow(
       }
     }
 
-    // Overtime from the OT Planner — extra net income on that paycheck's date.
-    const otAmt = otByDate?.[dateStr];
-    if (otAmt && otAmt > 0) {
-      filteredHits.push({ description: "Overtime", amount: otAmt, source: { type: "empty" }, isTransfer: false });
-    }
 
     if (filteredHits.length === 0) {
       rows.push({ date: dateStr, dayName, description: "—", amount: null, balance, isPayday: false, isLow: balance < 300, isToday, isPast, source: { type: "empty" }, isTransfer: false });
